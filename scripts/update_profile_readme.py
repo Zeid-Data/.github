@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import urllib.error
 import urllib.parse
@@ -11,6 +12,16 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+SOURCE_BANNER_MARKDOWN = (
+    '<p align="center">'
+    '<a href="https://github.com/zeiddata-dev">'
+    '<img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" '
+    'alt="Zeid Data Research" width="100%">'
+    '</a>'
+    '</p>'
+)
 
 
 def repo_root() -> Path:
@@ -75,7 +86,7 @@ def severity_color(severity: str) -> str:
         "high": "orange",
         "medium": "yellow",
         "low": "blue",
-        "info": "lightgrey"
+        "info": "lightgrey",
     }
     return lookup.get(str(severity).strip().lower(), "lightgrey")
 
@@ -87,12 +98,20 @@ def clean_cell(value: Any) -> str:
     return text.replace("|", "\\|").replace("\n", "<br>").strip()
 
 
+def first_list_item(value: Any, fallback: str) -> str:
+    if isinstance(value, list) and value:
+        return clean_cell(value[0])
+    if isinstance(value, str) and value.strip():
+        return clean_cell(value)
+    return fallback
+
+
 def table(headers: list[str], rows: list[list[Any]]) -> str:
     if not rows:
         rows = [["No records available."] + [""] * (len(headers) - 1)]
     out = [
         "| " + " | ".join(clean_cell(h) for h in headers) + " |",
-        "| " + " | ".join("---" for _ in headers) + " |"
+        "| " + " | ".join("---" for _ in headers) + " |",
     ]
     for row in rows:
         padded = list(row) + [""] * max(0, len(headers) - len(row))
@@ -103,7 +122,7 @@ def table(headers: list[str], rows: list[list[Any]]) -> str:
 def request_json(url: str, token: str | None) -> Any:
     headers = {
         "Accept": "application/vnd.github+json",
-        "User-Agent": "zeid-data-profile-updater"
+        "User-Agent": "zeid-data-profile-updater",
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -151,6 +170,23 @@ def repo_rows(repos: list[dict[str, Any]], warnings: list[str]) -> list[list[Any
     return rows
 
 
+def lithium_robot_panel(lithium: dict[str, Any]) -> str:
+    status = clean_cell(lithium.get("status", "Unknown"))
+    focus = first_list_item(lithium.get("current_focus"), "No current focus listed.")
+    validation = first_list_item(lithium.get("validation_targets"), "No validation target listed.")
+
+    return f"""<table>
+<tr>
+<td width="70" align="center">🤖</td>
+<td>
+<strong>Lithium bot status:</strong> {status}<br>
+<strong>Current read:</strong> {focus}<br>
+<strong>Next proof:</strong> {validation}
+</td>
+</tr>
+</table>"""
+
+
 def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dict[str, Any]], warnings: list[str]) -> str:
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     organization = str(now.get("organization") or "Zeid Data")
@@ -170,7 +206,7 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
     lithium_rows = [
         ["Status", badge("Lithium", lithium.get("status", "Unknown"), "7c3aed")],
         ["Current focus", lithium.get("current_focus", [])],
-        ["Validation targets", lithium.get("validation_targets", [])]
+        ["Validation targets", lithium.get("validation_targets", [])],
     ]
 
     radar_rows = []
@@ -183,7 +219,7 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
             badge("Severity", severity, severity_color(severity)),
             item.get("defender_focus"),
             item.get("signals", []),
-            item.get("build_response")
+            item.get("build_response"),
         ])
 
     build_rows = []
@@ -194,7 +230,7 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
             item.get("adversary_behavior"),
             item.get("telemetry", []),
             item.get("defensive_control", []),
-            item.get("zeid_build")
+            item.get("zeid_build"),
         ])
 
     principle_rows = [[item] for item in now.get("operating_principles", []) if str(item).strip()]
@@ -202,7 +238,9 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
     if warnings:
         warning_line = "\n> Repository metadata note: " + "; ".join(clean_cell(w) for w in warnings) + "\n"
 
-    return f"""# {organization}
+    return f"""{SOURCE_BANNER_MARKDOWN}
+
+# {organization}
 
 {badge("Focus", "Defensive Security", "0f766e")} {badge("Build", "Evidence First", "111827")} {badge("Ops", "Reproducible", "2563eb")} {badge("Scope", "Authorized Review", "7c2d12")}
 
@@ -218,7 +256,9 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
 
 {table(["Track", "Status", "Focus", "Next"], building_rows)}
 
-## Lithium Build Tracker
+## 🤖 Lithium Bot Tracker
+
+{lithium_robot_panel(lithium)}
 
 {table(["Area", "Details"], lithium_rows)}
 
@@ -246,11 +286,102 @@ Last generated: `{generated_at}`
 """
 
 
+def extract_links(markdown: str) -> list[str]:
+    links: set[str] = set()
+
+    for match in re.finditer(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)", markdown):
+        links.add(match.group(1).strip())
+
+    for match in re.finditer(r"""(?:href|src)=["']([^"']+)["']""", markdown, flags=re.IGNORECASE):
+        links.add(match.group(1).strip())
+
+    return sorted(link for link in links if link)
+
+
+def check_external_url(url: str) -> tuple[bool, str]:
+    parsed = urllib.parse.urlsplit(url)
+    clean_url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+
+    headers = {
+        "User-Agent": "zeid-data-profile-link-checker",
+        "Accept": "*/*",
+    }
+
+    errors: list[str] = []
+    for method in ("HEAD", "GET"):
+        try:
+            request = urllib.request.Request(clean_url, headers=headers, method=method)
+            with urllib.request.urlopen(request, timeout=20) as response:
+                status = getattr(response, "status", 200)
+                if 200 <= status < 400:
+                    return True, f"{status}"
+                errors.append(f"{method}:{status}")
+        except urllib.error.HTTPError as exc:
+            if 200 <= exc.code < 400:
+                return True, f"{exc.code}"
+            errors.append(f"{method}:{exc.code}")
+        except Exception as exc:
+            errors.append(f"{method}:{exc.__class__.__name__}")
+
+    return False, ";".join(errors)
+
+
+def validate_links(markdown: str, root: Path) -> None:
+    links = extract_links(markdown)
+    if not links:
+        raise SystemExit("[FAIL] no links found to validate")
+
+    failures: list[str] = []
+    print("[LINK CHECK]")
+    for link in links:
+        if link.startswith("#"):
+            print(f"PASS anchor {link}")
+            continue
+
+        parsed = urllib.parse.urlsplit(link)
+        if parsed.scheme in {"http", "https"}:
+            ok, detail = check_external_url(link)
+            if ok:
+                print(f"PASS {detail} {link}")
+            else:
+                print(f"FAIL {detail} {link}")
+                failures.append(link)
+            continue
+
+        if parsed.scheme in {"mailto"}:
+            print(f"PASS mailto {link}")
+            continue
+
+        local_path = link.split("#", 1)[0]
+        candidate = (root / local_path).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            failures.append(link)
+            print(f"FAIL outside_repo {link}")
+            continue
+
+        if candidate.exists():
+            print(f"PASS local {link}")
+        else:
+            print(f"FAIL missing_local {link}")
+            failures.append(link)
+
+    if failures:
+        print("[FAIL] unresolved links:")
+        for item in failures:
+            print(item)
+        raise SystemExit(1)
+
+    print(f"PASS checked_links={len(links)}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Update the Zeid Data organization profile README.")
     parser.add_argument("--org", default=os.environ.get("GITHUB_ORG", "Zeid-Data"))
     parser.add_argument("--readme", default=str(DEFAULT_README))
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--check-links", action="store_true")
     args = parser.parse_args()
 
     require_expected_repo()
@@ -272,6 +403,9 @@ def main() -> int:
     print(f"repos={len(repos)}")
     if warnings:
         print("warnings=" + "; ".join(warnings))
+
+    if args.check_links:
+        validate_links(content, ROOT)
 
     return 0
 

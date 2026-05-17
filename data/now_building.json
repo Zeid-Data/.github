@@ -33,7 +33,7 @@
     }
   ],
   "lithium_tracker": {
-    "name": "Lithium",
+    "name": "Lithium Bot Tracker",
     "status": "Active build",
     "current_focus": [
       "SQLite-backed normalized evidence records",

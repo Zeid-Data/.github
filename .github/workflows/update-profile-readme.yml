@@ -27,12 +27,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Generate README
+      - name: Generate and validate README
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: Zeid-Data
         run: |
-          python scripts/update_profile_readme.py --org Zeid-Data --readme profile/README.md
+          python scripts/update_profile_readme.py --org Zeid-Data --readme profile/README.md --check-links
 
       - name: Commit README changes
         run: |

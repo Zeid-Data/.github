@@ -1,3 +1,5 @@
+<p align="center"><a href="https://github.com/zeiddata-dev"><img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" alt="Zeid Data Research" width="100%"></a></p>
+
 # Zeid Data
 
 ![Focus: Defensive Security](https://img.shields.io/badge/Focus-Defensive%20Security-0f766e) ![Build: Evidence First](https://img.shields.io/badge/Build-Evidence%20First-111827) ![Ops: Reproducible](https://img.shields.io/badge/Ops-Reproducible-2563eb) ![Scope: Authorized Review](https://img.shields.io/badge/Scope-Authorized%20Review-7c2d12)
@@ -23,7 +25,18 @@ Defensive security engineering, detection content, and operational data systems.
 | Detection Engineering | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Sigma, KQL, SPL, Elastic, structured indicators, and defensive validation scripts. | Convert repeatable incident patterns into tested detection content. |
 | Infrastructure Hardening | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Inventory, configuration review, service exposure checks, and rollback-safe automation. | Keep scripts small, auditable, reversible, and evidence-producing. |
 
-## Lithium Build Tracker
+## 🤖 Lithium Bot Tracker
+
+<table>
+<tr>
+<td width="70" align="center">🤖</td>
+<td>
+<strong>Lithium bot status:</strong> Active build<br>
+<strong>Current read:</strong> SQLite-backed normalized evidence records<br>
+<strong>Next proof:</strong> Fresh record timestamps
+</td>
+</tr>
+</table>
 
 | Area | Details |
 | --- | --- |
@@ -55,7 +68,7 @@ Defensive security engineering, detection content, and operational data systems.
 
 | Repository | Description | Language | Stars | Updated |
 | --- | --- | --- | --- | --- |
-| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-17T02:54:23Z |
+| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-17T02:54:31Z |
 | [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | Python | 0 | 2026-05-13T13:46:20Z |
 
 ## Operating Principles
@@ -70,6 +83,6 @@ Defensive security engineering, detection content, and operational data systems.
 
 ---
 
-Last generated: `2026-05-17 02:54:27 UTC`
+Last generated: `2026-05-17 03:08:41 UTC`
 
 <!-- ZEID-DATA:README:END -->
