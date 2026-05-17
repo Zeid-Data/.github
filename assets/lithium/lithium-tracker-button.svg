@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="82" viewBox="0 0 520 82" role="img" aria-label="Open Lithium Bot Tracker">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" x2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="518" height="80" rx="18" fill="url(#bg)" stroke="#38bdf8" stroke-width="2"/>
+  <text x="30" y="34" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="21" font-weight="700">Open Lithium Bot Tracker</text>
+  <text x="30" y="58" fill="#a7f3d0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Static status: 72% operational</text>
+  <text x="455" y="52" fill="#e0f2fe" font-family="Segoe UI Emoji, Segoe UI, Arial, sans-serif" font-size="34">🤖</text>
+  <rect x="265" y="52" width="150" height="9" rx="5" fill="#1e293b"/>
+  <rect x="265" y="52" width="108" height="9" rx="5" fill="url(#bar)"/>
+</svg>

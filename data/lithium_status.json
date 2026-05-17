@@ -1,0 +1,36 @@
+{
+  "title": "Lithium Bot Tracker",
+  "button_text": "Open Lithium Bot Tracker",
+  "overall_percent": 72,
+  "status": "Static build status",
+  "current_focus": "Evidence-linked dashboard search, normalized records, and viewer-safe drilldowns.",
+  "next_proof": "Fresh records, permission-filtered API responses, and clickable evidence links.",
+  "summary": "Lithium is in active build mode with the core evidence pipeline, dashboard search, and access-control model moving toward operational proof.",
+  "categories": [
+    {
+      "name": "Normalized records",
+      "status": "Stable",
+      "percent": 85
+    },
+    {
+      "name": "Evidence links",
+      "status": "Active",
+      "percent": 75
+    },
+    {
+      "name": "Dashboard search",
+      "status": "Building",
+      "percent": 65
+    },
+    {
+      "name": "Viewer permissions",
+      "status": "Active",
+      "percent": 80
+    },
+    {
+      "name": "Runtime health checks",
+      "status": "Needs proof",
+      "percent": 55
+    }
+  ]
+}
