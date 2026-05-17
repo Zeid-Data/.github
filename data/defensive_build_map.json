@@ -1,0 +1,143 @@
+{
+  "radar": [
+    {
+      "pattern": "Credential phishing and token replay",
+      "severity": "Critical",
+      "defender_focus": "Identity telemetry, mailbox rules, OAuth grants, session anomalies, and account recovery evidence.",
+      "signals": [
+        "New consent grant",
+        "Impossible travel",
+        "Unexpected mailbox rule",
+        "Suspicious successful login"
+      ],
+      "build_response": "Identity review scripts, detection logic, and incident evidence checklists."
+    },
+    {
+      "pattern": "Infostealer-driven account takeover",
+      "severity": "Critical",
+      "defender_focus": "Endpoint evidence, browser token exposure, password reuse, and post-compromise cleanup.",
+      "signals": [
+        "Credential reuse",
+        "New device login",
+        "Password reset activity",
+        "Unusual data access"
+      ],
+      "build_response": "Host review commands, account reset workflow, and detection content."
+    },
+    {
+      "pattern": "Repository secret exposure",
+      "severity": "High",
+      "defender_focus": "Git history, exposed tokens, stale credentials, and unsafe config files.",
+      "signals": [
+        "Secret-like filenames",
+        "Token-shaped strings",
+        "Committed environment files",
+        "Suspicious workflow permissions"
+      ],
+      "build_response": "Repo audit scripts, rotation checklist, and pre-commit scanning guidance."
+    },
+    {
+      "pattern": "Suspicious PowerShell persistence",
+      "severity": "High",
+      "defender_focus": "Scheduled tasks, services, startup entries, encoded commands, and userland persistence.",
+      "signals": [
+        "Encoded command usage",
+        "Unknown scheduled task",
+        "Unexpected service binary path",
+        "Run key modification"
+      ],
+      "build_response": "Windows inventory scripts, persistence review, and safe-disable workflows."
+    },
+    {
+      "pattern": "Cloud key exposure and over-permissioning",
+      "severity": "High",
+      "defender_focus": "Access keys, IAM policies, public buckets, logging gaps, and unused privileges.",
+      "signals": [
+        "Unused access key",
+        "Overbroad policy",
+        "Public storage object",
+        "Missing audit trail"
+      ],
+      "build_response": "Cloud inventory checks, least-privilege review, and exposure reports."
+    },
+    {
+      "pattern": "Public surface scraping and impersonation risk",
+      "severity": "Medium",
+      "defender_focus": "Public metadata, profile visibility, brand impersonation, and exposed contact paths.",
+      "signals": [
+        "New lookalike account",
+        "Public metadata drift",
+        "Unexpected indexed asset",
+        "Unauthorized brand reuse"
+      ],
+      "build_response": "Public-surface audit tooling, reporting templates, and evidence capture."
+    }
+  ],
+  "build_map": [
+    {
+      "adversary_behavior": "Account takeover",
+      "telemetry": [
+        "Authentication logs",
+        "Mailbox rules",
+        "OAuth grants",
+        "Device history"
+      ],
+      "defensive_control": [
+        "MFA review",
+        "Session revocation",
+        "Rule cleanup",
+        "Login anomaly detection"
+      ],
+      "zeid_build": "Identity incident checklist and account review scripts"
+    },
+    {
+      "adversary_behavior": "Secret harvesting",
+      "telemetry": [
+        "Git history",
+        "Workflow files",
+        "Environment files",
+        "Token inventory"
+      ],
+      "defensive_control": [
+        "Secret scanning",
+        "Token rotation",
+        "Least-privilege review",
+        "Protected branches"
+      ],
+      "zeid_build": "Repository exposure audit workflow"
+    },
+    {
+      "adversary_behavior": "Endpoint persistence",
+      "telemetry": [
+        "Services",
+        "Scheduled tasks",
+        "Startup folders",
+        "Run keys",
+        "PowerShell logs"
+      ],
+      "defensive_control": [
+        "Persistence inventory",
+        "Safe-disable process",
+        "Script block logging",
+        "Change audit"
+      ],
+      "zeid_build": "Windows cleanup and persistence review toolkit"
+    },
+    {
+      "adversary_behavior": "Data exposure",
+      "telemetry": [
+        "Public assets",
+        "Storage permissions",
+        "Application logs",
+        "Repository metadata"
+      ],
+      "defensive_control": [
+        "Exposure inventory",
+        "Access review",
+        "Evidence capture",
+        "Remediation tracking"
+      ],
+      "zeid_build": "Public-surface and data exposure review workflows"
+    }
+  ]
+}
