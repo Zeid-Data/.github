@@ -2,12 +2,13 @@ name: Update organization profile README
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 */8 * * *"
   push:
     paths:
       - "scripts/update_profile_readme.py"
       - "data/now_building.json"
       - "data/defensive_build_map.json"
-      - "data/lithium_status.json"
       - ".github/workflows/update-profile-readme.yml"
 
 permissions:
@@ -27,19 +28,22 @@ jobs:
           python-version: "3.12"
 
       - name: Generate and validate README
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ORG: Zeid-Data
         run: |
-          python scripts/update_profile_readme.py --readme profile/README.md --check-links
+          python scripts/update_profile_readme.py --org Zeid-Data --readme profile/README.md --check-links
 
-      - name: Commit generated profile files
+      - name: Commit README changes
         run: |
-          if [ -z "$(git status --porcelain -- profile/README.md assets/lithium)" ]; then
-            echo "No generated changes."
+          if [ -z "$(git status --porcelain -- profile/README.md)" ]; then
+            echo "No README changes."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add profile/README.md assets/lithium
-          git commit -m "chore: update static lithium bot status"
+          git add profile/README.md
+          git commit -m "chore: update organization profile readme"
           git push

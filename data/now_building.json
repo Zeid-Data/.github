@@ -32,6 +32,24 @@
       "next": "Keep scripts small, auditable, reversible, and evidence-producing."
     }
   ],
+  "lithium_tracker": {
+    "name": "Lithium Bot Tracker",
+    "status": "Active build",
+    "current_focus": [
+      "SQLite-backed normalized evidence records",
+      "Readable relationship and operational signal dashboards",
+      "Search-first drilldown views",
+      "Viewer-aware access controls",
+      "Evidence references attached to every claim"
+    ],
+    "validation_targets": [
+      "Fresh record timestamps",
+      "Non-empty message text where expected",
+      "Stable profile identity mapping",
+      "Permission-filtered dashboard responses",
+      "No raw file dependency in runtime dashboard views"
+    ]
+  },
   "operating_principles": [
     "Authorized testing only.",
     "Evidence before conclusions.",

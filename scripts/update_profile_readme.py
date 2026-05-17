@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import os
 import re
@@ -10,8 +9,19 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+SOURCE_BANNER_MARKDOWN = (
+    '<p align="center">'
+    '<a href="https://github.com/zeiddata-dev">'
+    '<img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" '
+    'alt="Zeid Data Research" width="100%">'
+    '</a>'
+    '</p>'
+)
 
 
 def repo_root() -> Path:
@@ -31,8 +41,6 @@ ROOT = repo_root()
 DEFAULT_README = ROOT / "profile" / "README.md"
 NOW_BUILDING = ROOT / "data" / "now_building.json"
 DEFENSIVE_MAP = ROOT / "data" / "defensive_build_map.json"
-LITHIUM_STATUS = ROOT / "data" / "lithium_status.json"
-LITHIUM_ASSET_DIR = ROOT / "assets" / "lithium"
 
 
 def require_expected_repo() -> None:
@@ -62,16 +70,25 @@ def load_json(path: Path) -> dict[str, Any]:
     return data
 
 
-def clamp_percent(value: Any) -> int:
-    try:
-        number = int(value)
-    except Exception:
-        number = 0
-    return max(0, min(100, number))
+def quote_badge(value: Any) -> str:
+    text = str(value).replace("-", "--")
+    return urllib.parse.quote(text, safe="")
 
 
-def esc(value: Any) -> str:
-    return html.escape(str(value), quote=True)
+def badge(label: str, message: str, color: str) -> str:
+    alt = f"{label}: {message}"
+    return f"![{alt}](https://img.shields.io/badge/{quote_badge(label)}-{quote_badge(message)}-{quote_badge(color)})"
+
+
+def severity_color(severity: str) -> str:
+    lookup = {
+        "critical": "red",
+        "high": "orange",
+        "medium": "yellow",
+        "low": "blue",
+        "info": "lightgrey",
+    }
+    return lookup.get(str(severity).strip().lower(), "lightgrey")
 
 
 def clean_cell(value: Any) -> str:
@@ -79,6 +96,14 @@ def clean_cell(value: Any) -> str:
         return "<br>".join(clean_cell(item) for item in value)
     text = "" if value is None else str(value)
     return text.replace("|", "\\|").replace("\n", "<br>").strip()
+
+
+def first_list_item(value: Any, fallback: str) -> str:
+    if isinstance(value, list) and value:
+        return clean_cell(value[0])
+    if isinstance(value, str) and value.strip():
+        return clean_cell(value)
+    return fallback
 
 
 def table(headers: list[str], rows: list[list[Any]]) -> str:
@@ -94,199 +119,130 @@ def table(headers: list[str], rows: list[list[Any]]) -> str:
     return "\n".join(out)
 
 
-def severity_color_word(severity: str) -> str:
-    lookup = {
-        "critical": "Critical",
-        "high": "High",
-        "medium": "Medium",
-        "low": "Low",
-        "info": "Info",
+def request_json(url: str, token: str | None) -> Any:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "zeid-data-profile-updater",
     }
-    return lookup.get(str(severity).strip().lower(), "Info")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
-def write_text(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8", newline="\n")
+def fetch_org_repos(org: str, token: str | None, offline: bool) -> tuple[list[dict[str, Any]], list[str]]:
+    warnings: list[str] = []
+    if offline:
+        return [], ["offline mode enabled"]
+
+    repos: list[dict[str, Any]] = []
+    for page in range(1, 6):
+        url = f"https://api.github.com/orgs/{urllib.parse.quote(org)}/repos?type=public&sort=updated&per_page=100&page={page}"
+        try:
+            payload = request_json(url, token)
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            warnings.append(f"repository feed unavailable: {exc.__class__.__name__}")
+            break
+        if not isinstance(payload, list) or not payload:
+            break
+        repos.extend(item for item in payload if isinstance(item, dict))
+
+    repos.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+    return repos[:8], warnings
 
 
-def generate_button_svg(status: dict[str, Any]) -> None:
-    text = str(status.get("button_text", "Open Lithium Bot Tracker"))
-    percent = clamp_percent(status.get("overall_percent", 0))
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="520" height="82" viewBox="0 0 520 82" role="img" aria-label="{esc(text)}">
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1">
-      <stop offset="0" stop-color="#0f172a"/>
-      <stop offset="1" stop-color="#312e81"/>
-    </linearGradient>
-    <linearGradient id="bar" x1="0" x2="1">
-      <stop offset="0" stop-color="#22c55e"/>
-      <stop offset="1" stop-color="#38bdf8"/>
-    </linearGradient>
-  </defs>
-  <rect x="1" y="1" width="518" height="80" rx="18" fill="url(#bg)" stroke="#38bdf8" stroke-width="2"/>
-  <text x="30" y="34" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="21" font-weight="700">{esc(text)}</text>
-  <text x="30" y="58" fill="#a7f3d0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Static status: {percent}% operational</text>
-  <text x="455" y="52" fill="#e0f2fe" font-family="Segoe UI Emoji, Segoe UI, Arial, sans-serif" font-size="34">🤖</text>
-  <rect x="265" y="52" width="150" height="9" rx="5" fill="#1e293b"/>
-  <rect x="265" y="52" width="{int(150 * percent / 100)}" height="9" rx="5" fill="url(#bar)"/>
-</svg>
-'''
-    write_text(LITHIUM_ASSET_DIR / "lithium-tracker-button.svg", svg)
+def repo_rows(repos: list[dict[str, Any]], warnings: list[str]) -> list[list[Any]]:
+    rows: list[list[Any]] = []
+    for repo in repos:
+        name = repo.get("name") or "unknown"
+        url = repo.get("html_url") or ""
+        description = repo.get("description") or "No description set."
+        language = repo.get("language") or "Mixed"
+        updated = repo.get("updated_at") or "unknown"
+        stars = repo.get("stargazers_count", 0)
+        name_cell = f"[{clean_cell(name)}]({url})" if isinstance(url, str) and url.startswith("https://") else clean_cell(name)
+        rows.append([name_cell, description, language, stars, updated])
+
+    if not rows and warnings:
+        rows.append(["Repository feed", "Unavailable in this run.", "N/A", "N/A", "; ".join(warnings)])
+
+    return rows
 
 
-def generate_robot_svg(status: dict[str, Any]) -> None:
-    percent = clamp_percent(status.get("overall_percent", 0))
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Lithium bot status robot">
-  <defs>
-    <linearGradient id="face" x1="0" x2="1">
-      <stop offset="0" stop-color="#0ea5e9"/>
-      <stop offset="1" stop-color="#7c3aed"/>
-    </linearGradient>
-  </defs>
-  <rect x="23" y="31" width="74" height="58" rx="16" fill="#020617" stroke="url(#face)" stroke-width="4"/>
-  <rect x="38" y="48" width="14" height="14" rx="7" fill="#67e8f9"/>
-  <rect x="68" y="48" width="14" height="14" rx="7" fill="#67e8f9"/>
-  <path d="M42 73 Q60 84 78 73" fill="none" stroke="#a7f3d0" stroke-width="4" stroke-linecap="round"/>
-  <path d="M60 31 V18" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="60" cy="15" r="6" fill="#22c55e"/>
-  <text x="60" y="108" text-anchor="middle" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">{percent}%</text>
-</svg>
-'''
-    write_text(LITHIUM_ASSET_DIR / "lithium-bot.svg", svg)
+def lithium_robot_panel(lithium: dict[str, Any]) -> str:
+    status = clean_cell(lithium.get("status", "Unknown"))
+    focus = first_list_item(lithium.get("current_focus"), "No current focus listed.")
+    validation = first_list_item(lithium.get("validation_targets"), "No validation target listed.")
 
-
-def generate_progress_svg(status: dict[str, Any]) -> None:
-    categories = status.get("categories", [])
-    if not isinstance(categories, list):
-        categories = []
-
-    width = 900
-    row_h = 54
-    height = 88 + max(1, len(categories)) * row_h
-    rows = []
-
-    for i, item in enumerate(categories):
-        if not isinstance(item, dict):
-            continue
-        y = 76 + i * row_h
-        name = esc(item.get("name", "Unknown"))
-        label = esc(item.get("status", "Unknown"))
-        percent = clamp_percent(item.get("percent", 0))
-        bar_w = int(500 * percent / 100)
-        rows.append(f'''
-  <text x="36" y="{y + 22}" fill="#e5e7eb" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600">{name}</text>
-  <text x="300" y="{y + 22}" fill="#c4b5fd" font-family="Segoe UI, Arial, sans-serif" font-size="15">{label}</text>
-  <rect x="390" y="{y + 5}" width="500" height="22" rx="11" fill="#1e293b"/>
-  <rect x="390" y="{y + 5}" width="{bar_w}" height="22" rx="11" fill="#22c55e"/>
-  <text x="650" y="{y + 22}" text-anchor="middle" fill="#020617" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="800">{percent}%</text>
-''')
-
-    overall = clamp_percent(status.get("overall_percent", 0))
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Lithium Bot progress chart">
-  <defs>
-    <linearGradient id="panel" x1="0" x2="1">
-      <stop offset="0" stop-color="#020617"/>
-      <stop offset="1" stop-color="#111827"/>
-    </linearGradient>
-  </defs>
-  <rect x="1" y="1" width="{width - 2}" height="{height - 2}" rx="22" fill="url(#panel)" stroke="#334155" stroke-width="2"/>
-  <text x="36" y="42" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="800">Lithium Bot Static Build Status</text>
-  <text x="820" y="42" text-anchor="end" fill="#a7f3d0" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="800">{overall}%</text>
-  {''.join(rows)}
-</svg>
-'''
-    write_text(LITHIUM_ASSET_DIR / "lithium-progress.svg", svg)
-
-
-def generate_assets(status: dict[str, Any]) -> None:
-    LITHIUM_ASSET_DIR.mkdir(parents=True, exist_ok=True)
-    generate_button_svg(status)
-    generate_robot_svg(status)
-    generate_progress_svg(status)
-
-
-def lithium_section(status: dict[str, Any]) -> str:
-    percent = clamp_percent(status.get("overall_percent", 0))
-    categories = status.get("categories", [])
-    if not isinstance(categories, list):
-        categories = []
-
-    rows = []
-    for item in categories:
-        if isinstance(item, dict):
-            rows.append([
-                item.get("name", "Unknown"),
-                item.get("status", "Unknown"),
-                str(clamp_percent(item.get("percent", 0))) + "%"
-            ])
-
-    return f'''<p align="center">
-  <a href="#-lithium-bot-tracker">
-    <img src="assets/lithium/lithium-tracker-button.svg" alt="Open Lithium Bot Tracker" width="520">
-  </a>
-</p>
-
-## 🤖 Lithium Bot Tracker
-
-<table>
+    return f"""<table>
 <tr>
-<td width="90" align="center">
-<img src="assets/lithium/lithium-bot.svg" alt="Lithium bot status robot" width="76">
-</td>
+<td width="70" align="center">🤖</td>
 <td>
-<strong>Overall build state:</strong> {percent}% operational<br>
-<strong>Status:</strong> {clean_cell(status.get("status", "Static build status"))}<br>
-<strong>Current focus:</strong> {clean_cell(status.get("current_focus", ""))}<br>
-<strong>Next proof:</strong> {clean_cell(status.get("next_proof", ""))}
+<strong>Lithium bot status:</strong> {status}<br>
+<strong>Current read:</strong> {focus}<br>
+<strong>Next proof:</strong> {validation}
 </td>
 </tr>
-</table>
-
-<p align="center">
-  <img src="assets/lithium/lithium-progress.svg" alt="Lithium Bot progress chart" width="760">
-</p>
-
-{table(["Area", "Status", "Progress"], rows)}
-
-'''
+</table>"""
 
 
-def build_readme(now: dict[str, Any], defensive: dict[str, Any], status: dict[str, Any]) -> str:
+def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dict[str, Any]], warnings: list[str]) -> str:
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     organization = str(now.get("organization") or "Zeid Data")
     tagline = str(now.get("tagline") or "Defensive security engineering.")
 
     mission_rows = [[item] for item in now.get("mission", []) if str(item).strip()]
     building_rows = [
-        [item.get("track"), item.get("status"), item.get("focus"), item.get("next")]
+        [item.get("track"), badge("Status", item.get("status", "Unknown"), "0f766e"), item.get("focus"), item.get("next")]
         for item in now.get("now_building", [])
         if isinstance(item, dict)
     ]
 
+    lithium = now.get("lithium_tracker", {})
+    if not isinstance(lithium, dict):
+        lithium = {}
+
+    lithium_rows = [
+        ["Status", badge("Lithium", lithium.get("status", "Unknown"), "7c3aed")],
+        ["Current focus", lithium.get("current_focus", [])],
+        ["Validation targets", lithium.get("validation_targets", [])],
+    ]
+
     radar_rows = []
     for item in defensive.get("radar", []):
-        if isinstance(item, dict):
-            radar_rows.append([
-                item.get("pattern"),
-                severity_color_word(str(item.get("severity") or "Info")),
-                item.get("defender_focus"),
-                item.get("signals", []),
-                item.get("build_response"),
-            ])
+        if not isinstance(item, dict):
+            continue
+        severity = str(item.get("severity") or "Info")
+        radar_rows.append([
+            item.get("pattern"),
+            badge("Severity", severity, severity_color(severity)),
+            item.get("defender_focus"),
+            item.get("signals", []),
+            item.get("build_response"),
+        ])
 
     build_rows = []
     for item in defensive.get("build_map", []):
-        if isinstance(item, dict):
-            build_rows.append([
-                item.get("adversary_behavior"),
-                item.get("telemetry", []),
-                item.get("defensive_control", []),
-                item.get("zeid_build"),
-            ])
+        if not isinstance(item, dict):
+            continue
+        build_rows.append([
+            item.get("adversary_behavior"),
+            item.get("telemetry", []),
+            item.get("defensive_control", []),
+            item.get("zeid_build"),
+        ])
 
     principle_rows = [[item] for item in now.get("operating_principles", []) if str(item).strip()]
+    warning_line = ""
+    if warnings:
+        warning_line = "\n> Repository metadata note: " + "; ".join(clean_cell(w) for w in warnings) + "\n"
 
-    return f'''# {organization}
+    return f"""{SOURCE_BANNER_MARKDOWN}
+
+# {organization}
+
+{badge("Focus", "Defensive Security", "0f766e")} {badge("Build", "Evidence First", "111827")} {badge("Ops", "Reproducible", "2563eb")} {badge("Scope", "Authorized Review", "7c2d12")}
 
 {tagline}
 
@@ -300,7 +256,12 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], status: dict[st
 
 {table(["Track", "Status", "Focus", "Next"], building_rows)}
 
-{lithium_section(status)}
+## 🤖 Lithium Bot Tracker
+
+{lithium_robot_panel(lithium)}
+
+{table(["Area", "Details"], lithium_rows)}
+
 ## Threat Intel Radar
 
 {table(["Pattern", "Severity", "Defender Focus", "Signals", "Build Response"], radar_rows)}
@@ -309,96 +270,172 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], status: dict[st
 
 {table(["Adversary Behavior", "Telemetry", "Defensive Control", "Zeid Data Build"], build_rows)}
 
+## Public Repository Feed
+
+{table(["Repository", "Description", "Language", "Stars", "Updated"], repo_rows(repos, warnings))}
+{warning_line}
 ## Operating Principles
 
 {table(["Rule"], principle_rows)}
 
+---
+
+Last generated: `{generated_at}`
+
 <!-- ZEID-DATA:README:END -->
-'''
+"""
 
 
 def extract_links(markdown: str) -> list[str]:
     links: set[str] = set()
-    for match in re.finditer(r'!?\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)', markdown):
+
+    for match in re.finditer(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)", markdown):
         links.add(match.group(1).strip())
-    for match in re.finditer(r'(?:href|src)=["\']([^"\']+)["\']', markdown, flags=re.IGNORECASE):
+
+    for match in re.finditer(r"""(?:href|src)=["']([^"']+)["']""", markdown, flags=re.IGNORECASE):
         links.add(match.group(1).strip())
+
     return sorted(link for link in links if link)
-
-
-def local_anchor_exists(markdown: str, anchor: str) -> bool:
-    if anchor == "#-lithium-bot-tracker":
-        return "## 🤖 Lithium Bot Tracker" in markdown
-    if anchor.startswith("#"):
-        return True
-    return False
 
 
 def check_external_url(url: str) -> tuple[bool, str]:
     parsed = urllib.parse.urlsplit(url)
     clean_url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
 
+    headers = {
+        "User-Agent": "zeid-data-profile-link-checker",
+        "Accept": "*/*",
+    }
+
+    errors: list[str] = []
     for method in ("HEAD", "GET"):
         try:
-            request = urllib.request.Request(
-                clean_url,
-                headers={"User-Agent": "zeid-data-profile-link-checker"},
-                method=method,
-            )
+            request = urllib.request.Request(clean_url, headers=headers, method=method)
             with urllib.request.urlopen(request, timeout=20) as response:
                 status = getattr(response, "status", 200)
                 if 200 <= status < 400:
-                    return True, str(status)
+                    return True, f"{status}"
+                errors.append(f"{method}:{status}")
         except urllib.error.HTTPError as exc:
             if 200 <= exc.code < 400:
-                return True, str(exc.code)
+                return True, f"{exc.code}"
+            errors.append(f"{method}:{exc.code}")
         except Exception as exc:
-            last_error = exc.__class__.__name__
+            errors.append(f"{method}:{exc.__class__.__name__}")
 
-    return False, last_error if "last_error" in locals() else "failed"
+    return False, ";".join(errors)
+
+
+def link_resolves(link: str, root: Path) -> tuple[bool, str]:
+    if not link:
+        return False, "empty"
+
+    if link.startswith("#"):
+        return True, "anchor"
+
+    parsed = urllib.parse.urlsplit(link)
+
+    if parsed.scheme in {"http", "https"}:
+        return check_external_url(link)
+
+    if parsed.scheme == "mailto":
+        return True, "mailto"
+
+    local_path = link.split("#", 1)[0]
+    candidate = (root / local_path).resolve()
+
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return False, "outside_repo"
+
+    if candidate.exists():
+        return True, "local"
+
+    return False, "missing_local"
+
+
+def unresolved_links(markdown: str, root: Path) -> list[str]:
+    failures: list[str] = []
+    for link in extract_links(markdown):
+        ok, detail = link_resolves(link, root)
+        if ok:
+            print(f"PASS {detail} {link}")
+        else:
+            print(f"FAIL {detail} {link}")
+            failures.append(link)
+    return failures
+
+
+def kill_bad_hrefs_and_sources(markdown: str, root: Path) -> str:
+    changed = markdown
+
+    html_href_pattern = re.compile(
+        r"""<a\b([^>]*?)\s+href=["']([^"']+)["']([^>]*)>(.*?)</a>""",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    def replace_html_anchor(match: re.Match[str]) -> str:
+        href = match.group(2).strip()
+        body = match.group(4)
+        ok, detail = link_resolves(href, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL href {detail} {href}")
+        return body
+
+    changed = html_href_pattern.sub(replace_html_anchor, changed)
+
+    html_img_pattern = re.compile(
+        r"""<img\b[^>]*?\s+src=["']([^"']+)["'][^>]*?>""",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    def replace_html_img(match: re.Match[str]) -> str:
+        src = match.group(1).strip()
+        ok, detail = link_resolves(src, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL img {detail} {src}")
+        return ""
+
+    changed = html_img_pattern.sub(replace_html_img, changed)
+
+    markdown_link_pattern = re.compile(r"""(?<!!)\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+
+    def replace_markdown_link(match: re.Match[str]) -> str:
+        label = match.group(1)
+        href = match.group(2).strip()
+        ok, detail = link_resolves(href, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL markdown_href {detail} {href}")
+        return label
+
+    changed = markdown_link_pattern.sub(replace_markdown_link, changed)
+
+    markdown_img_pattern = re.compile(r"""!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+
+    def replace_markdown_img(match: re.Match[str]) -> str:
+        src = match.group(2).strip()
+        ok, detail = link_resolves(src, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL markdown_img {detail} {src}")
+        return ""
+
+    changed = markdown_img_pattern.sub(replace_markdown_img, changed)
+
+    return changed
 
 
 def validate_links(markdown: str, root: Path) -> None:
-    failures: list[str] = []
+    links = extract_links(markdown)
+    if not links:
+        raise SystemExit("[FAIL] no links found to validate")
 
     print("[LINK CHECK]")
-    for link in extract_links(markdown):
-        if link.startswith("#"):
-            if local_anchor_exists(markdown, link):
-                print(f"PASS anchor {link}")
-            else:
-                print(f"FAIL anchor {link}")
-                failures.append(link)
-            continue
-
-        parsed = urllib.parse.urlsplit(link)
-
-        if parsed.scheme in {"http", "https"}:
-            ok, detail = check_external_url(link)
-            print(("PASS" if ok else "FAIL") + f" {detail} {link}")
-            if not ok:
-                failures.append(link)
-            continue
-
-        if parsed.scheme == "mailto":
-            print(f"PASS mailto {link}")
-            continue
-
-        local_path = link.split("#", 1)[0]
-        candidate = (root / local_path).resolve()
-
-        try:
-            candidate.relative_to(root)
-        except ValueError:
-            print(f"FAIL outside_repo {link}")
-            failures.append(link)
-            continue
-
-        if candidate.exists():
-            print(f"PASS local {link}")
-        else:
-            print(f"FAIL missing_local {link}")
-            failures.append(link)
+    failures = unresolved_links(markdown, root)
 
     if failures:
         print("[FAIL] unresolved links:")
@@ -406,35 +443,38 @@ def validate_links(markdown: str, root: Path) -> None:
             print(item)
         raise SystemExit(1)
 
-    print("PASS all links resolve")
+    print(f"PASS checked_links={len(links)}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate the Zeid Data organization profile README.")
+    parser = argparse.ArgumentParser(description="Update the Zeid Data organization profile README.")
+    parser.add_argument("--org", default=os.environ.get("GITHUB_ORG", "Zeid-Data"))
     parser.add_argument("--readme", default=str(DEFAULT_README))
+    parser.add_argument("--offline", action="store_true")
     parser.add_argument("--check-links", action="store_true")
     args = parser.parse_args()
 
     require_expected_repo()
 
-    now = load_json(NOW_BUILDING)
-    defensive = load_json(DEFENSIVE_MAP)
-    status = load_json(LITHIUM_STATUS)
-
-    generate_assets(status)
-
     readme_path = Path(args.readme)
     if not readme_path.is_absolute():
         readme_path = ROOT / readme_path
 
-    content = build_readme(now, defensive, status)
-    write_text(readme_path, content)
+    now = load_json(NOW_BUILDING)
+    defensive = load_json(DEFENSIVE_MAP)
+    repos, warnings = fetch_org_repos(args.org, os.environ.get("GITHUB_TOKEN"), args.offline)
+
+    content = build_readme(now, defensive, repos, warnings)
+    content = kill_bad_hrefs_and_sources(content, ROOT)
+
+    readme_path.parent.mkdir(parents=True, exist_ok=True)
+    readme_path.write_text(content, encoding="utf-8")
 
     print(f"root={ROOT}")
     print(f"wrote={readme_path.relative_to(ROOT)}")
-    print("wrote=assets/lithium/lithium-tracker-button.svg")
-    print("wrote=assets/lithium/lithium-bot.svg")
-    print("wrote=assets/lithium/lithium-progress.svg")
+    print(f"repos={len(repos)}")
+    if warnings:
+        print("warnings=" + "; ".join(warnings))
 
     if args.check_links:
         validate_links(content, ROOT)
