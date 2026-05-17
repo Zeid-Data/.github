@@ -68,7 +68,7 @@ Defensive security engineering, detection content, and operational data systems.
 
 | Repository | Description | Language | Stars | Updated |
 | --- | --- | --- | --- | --- |
-| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-17T04:17:51Z |
+| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-17T04:46:21Z |
 | [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | Python | 0 | 2026-05-13T13:46:20Z |
 
 ## Operating Principles
@@ -83,6 +83,6 @@ Defensive security engineering, detection content, and operational data systems.
 
 ---
 
-Last generated: `2026-05-17 04:17:55 UTC`
+Last generated: `2026-05-17 04:46:25 UTC`
 
 <!-- ZEID-DATA:README:END -->
