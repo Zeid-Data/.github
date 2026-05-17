@@ -1,0 +1,40 @@
+name: Update threat radar
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-threat-radar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update profile README
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ZD_OWNER: Zeid-Data
+          ZD_README_PATH: profile/README.md
+          ZD_KEV_LIMIT: "8"
+          ZD_REPO_LIMIT: "6"
+        run: |
+          python3 .github/scripts/update_threat_radar.py
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "[PASS] no changes"
+            exit 0
+          fi
+
+          git config user.name "zeid-data-threat-radar-bot"
+          git config user.email "actions@github.com"
+          git add profile/README.md
+          git commit -m "Update Zeid Data threat radar"
+          git push
