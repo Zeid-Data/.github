@@ -326,46 +326,116 @@ def check_external_url(url: str) -> tuple[bool, str]:
     return False, ";".join(errors)
 
 
+def link_resolves(link: str, root: Path) -> tuple[bool, str]:
+    if not link:
+        return False, "empty"
+
+    if link.startswith("#"):
+        return True, "anchor"
+
+    parsed = urllib.parse.urlsplit(link)
+
+    if parsed.scheme in {"http", "https"}:
+        return check_external_url(link)
+
+    if parsed.scheme == "mailto":
+        return True, "mailto"
+
+    local_path = link.split("#", 1)[0]
+    candidate = (root / local_path).resolve()
+
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return False, "outside_repo"
+
+    if candidate.exists():
+        return True, "local"
+
+    return False, "missing_local"
+
+
+def unresolved_links(markdown: str, root: Path) -> list[str]:
+    failures: list[str] = []
+    for link in extract_links(markdown):
+        ok, detail = link_resolves(link, root)
+        if ok:
+            print(f"PASS {detail} {link}")
+        else:
+            print(f"FAIL {detail} {link}")
+            failures.append(link)
+    return failures
+
+
+def kill_bad_hrefs_and_sources(markdown: str, root: Path) -> str:
+    changed = markdown
+
+    html_href_pattern = re.compile(
+        r"""<a\b([^>]*?)\s+href=["']([^"']+)["']([^>]*)>(.*?)</a>""",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    def replace_html_anchor(match: re.Match[str]) -> str:
+        href = match.group(2).strip()
+        body = match.group(4)
+        ok, detail = link_resolves(href, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL href {detail} {href}")
+        return body
+
+    changed = html_href_pattern.sub(replace_html_anchor, changed)
+
+    html_img_pattern = re.compile(
+        r"""<img\b[^>]*?\s+src=["']([^"']+)["'][^>]*?>""",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    def replace_html_img(match: re.Match[str]) -> str:
+        src = match.group(1).strip()
+        ok, detail = link_resolves(src, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL img {detail} {src}")
+        return ""
+
+    changed = html_img_pattern.sub(replace_html_img, changed)
+
+    markdown_link_pattern = re.compile(r"""(?<!!)\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+
+    def replace_markdown_link(match: re.Match[str]) -> str:
+        label = match.group(1)
+        href = match.group(2).strip()
+        ok, detail = link_resolves(href, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL markdown_href {detail} {href}")
+        return label
+
+    changed = markdown_link_pattern.sub(replace_markdown_link, changed)
+
+    markdown_img_pattern = re.compile(r"""!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+
+    def replace_markdown_img(match: re.Match[str]) -> str:
+        src = match.group(2).strip()
+        ok, detail = link_resolves(src, root)
+        if ok:
+            return match.group(0)
+        print(f"KILL markdown_img {detail} {src}")
+        return ""
+
+    changed = markdown_img_pattern.sub(replace_markdown_img, changed)
+
+    return changed
+
+
 def validate_links(markdown: str, root: Path) -> None:
     links = extract_links(markdown)
     if not links:
         raise SystemExit("[FAIL] no links found to validate")
 
-    failures: list[str] = []
     print("[LINK CHECK]")
-    for link in links:
-        if link.startswith("#"):
-            print(f"PASS anchor {link}")
-            continue
-
-        parsed = urllib.parse.urlsplit(link)
-        if parsed.scheme in {"http", "https"}:
-            ok, detail = check_external_url(link)
-            if ok:
-                print(f"PASS {detail} {link}")
-            else:
-                print(f"FAIL {detail} {link}")
-                failures.append(link)
-            continue
-
-        if parsed.scheme in {"mailto"}:
-            print(f"PASS mailto {link}")
-            continue
-
-        local_path = link.split("#", 1)[0]
-        candidate = (root / local_path).resolve()
-        try:
-            candidate.relative_to(root)
-        except ValueError:
-            failures.append(link)
-            print(f"FAIL outside_repo {link}")
-            continue
-
-        if candidate.exists():
-            print(f"PASS local {link}")
-        else:
-            print(f"FAIL missing_local {link}")
-            failures.append(link)
+    failures = unresolved_links(markdown, root)
 
     if failures:
         print("[FAIL] unresolved links:")
@@ -395,6 +465,8 @@ def main() -> int:
     repos, warnings = fetch_org_repos(args.org, os.environ.get("GITHUB_TOKEN"), args.offline)
 
     content = build_readme(now, defensive, repos, warnings)
+    content = kill_bad_hrefs_and_sources(content, ROOT)
+
     readme_path.parent.mkdir(parents=True, exist_ok=True)
     readme_path.write_text(content, encoding="utf-8")
 
