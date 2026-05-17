@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ OWNER = os.getenv("ZD_OWNER", "Zeid-Data")
 README_PATH = Path(os.getenv("ZD_README_PATH", "profile/README.md"))
 KEV_LIMIT = int(os.getenv("ZD_KEV_LIMIT", "8"))
 REPO_LIMIT = int(os.getenv("ZD_REPO_LIMIT", "6"))
+LITHIUM_REPO = os.getenv("ZD_LITHIUM_REPO", "Zeid-Data/lithium")
 
 START = "<!-- ZD_THREAT_RADAR_START -->"
 END = "<!-- ZD_THREAT_RADAR_END -->"
@@ -39,6 +41,9 @@ def fetch_json(url: str, token: str | None = None) -> Any:
 def safe_fetch(url: str, token: str | None = None, default: Any = None) -> Any:
     try:
         return fetch_json(url, token)
+    except urllib.error.HTTPError as exc:
+        print(f"[WARN] HTTP {exc.code}: {url}", file=sys.stderr)
+        return default
     except Exception as exc:
         print(f"[WARN] fetch failed: {url}: {exc}", file=sys.stderr)
         return default
@@ -53,6 +58,11 @@ def clean(value: Any, default: str = "") -> str:
 def short(value: Any, default: str = "", limit: int = 130) -> str:
     text = clean(value, default)
     return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
+
+
+def badge(label: str, color: str) -> str:
+    label_safe = clean(label).replace("-", "--").replace(" ", "%20")
+    return f'<img alt="{clean(label)}" src="https://img.shields.io/badge/{label_safe}-{color}?style=flat-square">'
 
 
 def latest_kev() -> list[dict[str, Any]]:
@@ -88,23 +98,86 @@ def classify(item: dict[str, Any]) -> tuple[str, str]:
         return "SQL injection", "Query-pattern detections and validation fixtures"
     if any(x in text for x in ("use after free", "memory corruption", "buffer overflow", "out-of-bounds")):
         return "Memory corruption", "Patch-priority radar and host-update validation"
+    if any(x in text for x in ("cross-site scripting", "xss")):
+        return "Cross-site scripting", "Web hygiene checks, CSP review, validation fixtures"
 
     return "Known exploited vulnerability", "KEV watcher item and manual validation checklist"
 
 
-def priority(item: dict[str, Any]) -> str:
+def operational_severity(item: dict[str, Any], risk_class: str) -> tuple[str, str, str]:
     ransomware = clean(item.get("knownRansomwareCampaignUse"), "Unknown").lower()
     due = clean(item.get("dueDate"))
-    if "known" in ransomware:
-        return "Ransomware-linked priority"
+
+    past_due = False
     if due:
         try:
-            due_date = dt.date.fromisoformat(due[:10])
-            if due_date <= dt.datetime.now(dt.UTC).date():
-                return "Past due"
+            past_due = dt.date.fromisoformat(due[:10]) <= dt.datetime.now(dt.UTC).date()
         except ValueError:
-            pass
-    return "Review"
+            past_due = False
+
+    if "known" in ransomware or risk_class in {"Remote code execution", "Authentication bypass"}:
+        return "Critical", "red", "Ransomware-linked, RCE/auth bypass, or immediate exploit priority"
+    if past_due or risk_class in {"Privilege escalation", "Command injection", "SQL injection", "Memory corruption"}:
+        return "High", "orange", "Past due or high-impact exploit class"
+    if risk_class in {"Path traversal/file exposure", "Cross-site scripting"}:
+        return "Medium", "yellow", "Exposure or web abuse class"
+    return "Review", "blue", "Known exploited, needs product exposure validation"
+
+
+def lithium_tracker() -> list[str]:
+    token = os.getenv("ZD_GH_READ_TOKEN") or os.getenv("GH_READ_TOKEN") or os.getenv("GITHUB_TOKEN")
+    repo_url = f"{GITHUB_API}/repos/{LITHIUM_REPO}"
+    repo = safe_fetch(repo_url, token, default=None)
+
+    lines = ["", "### Lithium build tracker", ""]
+    lines.append("| Signal | Value |")
+    lines.append("|---|---|")
+
+    if not isinstance(repo, dict):
+        lines.append(f"| Repository | `{LITHIUM_REPO}` |")
+        lines.append("| Status | Private or unavailable to this workflow token |")
+        lines.append("| Enable dynamic tracker | Add repository secret `ZD_GH_READ_TOKEN` with read access to `Zeid-Data/lithium` |")
+        return lines
+
+    default_branch = clean(repo.get("default_branch"), "main")
+    pushed_at = clean(repo.get("pushed_at"), "unknown")
+    visibility = clean(repo.get("visibility"), "unknown")
+    language = clean(repo.get("language"), "mixed")
+
+    commits = safe_fetch(
+        f"{GITHUB_API}/repos/{LITHIUM_REPO}/commits?sha={default_branch}&per_page=1",
+        token,
+        default=[],
+    )
+    latest_commit = "unavailable"
+    if isinstance(commits, list) and commits:
+        commit = commits[0]
+        sha = clean(commit.get("sha"), "")[:7]
+        message = clean(commit.get("commit", {}).get("message"), "").split("\\n", 1)[0]
+        latest_commit = f"`{sha}` {short(message, 'no message', 90)}"
+
+    runs = safe_fetch(
+        f"{GITHUB_API}/repos/{LITHIUM_REPO}/actions/runs?branch={default_branch}&per_page=1",
+        token,
+        default={},
+    )
+    latest_run = "No workflow run visible"
+    if isinstance(runs, dict) and runs.get("workflow_runs"):
+        run = runs["workflow_runs"][0]
+        status = clean(run.get("status"), "unknown")
+        conclusion = clean(run.get("conclusion"), "pending")
+        name = clean(run.get("name"), "workflow")
+        created = clean(run.get("created_at"), "unknown")
+        latest_run = f"{name}: `{status}/{conclusion}` at `{created}`"
+
+    lines.append(f"| Repository | `{LITHIUM_REPO}` |")
+    lines.append(f"| Visibility | `{visibility}` |")
+    lines.append(f"| Language | `{language}` |")
+    lines.append(f"| Default branch | `{default_branch}` |")
+    lines.append(f"| Last push | `{pushed_at}` |")
+    lines.append(f"| Latest commit | {latest_commit} |")
+    lines.append(f"| Latest workflow | {latest_run} |")
+    return lines
 
 
 def render() -> str:
@@ -115,22 +188,23 @@ def render() -> str:
     lines.append("")
     lines.append("### Current exploited vulnerability radar")
     lines.append("")
-    lines.append("Source: CISA Known Exploited Vulnerabilities catalog. Attribution is intentionally omitted unless the source data proves it.")
+    lines.append("Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Data operational severity, not a CVSS score.")
     lines.append("")
-    lines.append("| CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Priority |")
-    lines.append("|---|---|---|---:|---:|---|---|")
+    lines.append("| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |")
+    lines.append("|---|---|---|---|---:|---:|---|---|")
 
     kev_rows = latest_kev()
     if not kev_rows:
-        lines.append("| KEV fetch unavailable | n/a | n/a | n/a | n/a | Check workflow logs and network access | Review |")
+        lines.append(f"| {badge('Review', 'blue')} | KEV fetch unavailable | n/a | n/a | n/a | n/a | Check workflow logs and network access | Feed unavailable |")
     else:
         for item in kev_rows:
             cve = clean(item.get("cveID"), "unknown")
             product = f"{clean(item.get('vendorProject'), 'Unknown vendor')} {clean(item.get('product'), 'Unknown product')}"
             risk, build = classify(item)
+            sev, color, rationale = operational_severity(item, risk)
             added = clean(item.get("dateAdded"), "unknown")
             due = clean(item.get("dueDate"), "n/a")
-            lines.append(f"| `{cve}` | {product} | {risk} | `{added}` | `{due}` | {build} | {priority(item)} |")
+            lines.append(f"| {badge(sev, color)} | `{cve}` | {product} | {risk} | `{added}` | `{due}` | {build} | {rationale} |")
 
     lines.append("")
     lines.append("### What we’re building to reduce the pattern")
@@ -143,9 +217,11 @@ def render() -> str:
     lines.append("| Detection gaps | Missing SIEM rules, weak telemetry, untested assumptions | Sigma, KQL, SPL, and Elastic detections |")
     lines.append("| Weak evidence chain | Findings without logs, source refs, or reproducible tests | Normalized evidence records, source refs, reports, dashboards |")
 
+    lines.extend(lithium_tracker())
+
     repos = public_repos()
     lines.append("")
-    lines.append("### Now building")
+    lines.append("### Public build tracker")
     lines.append("")
     lines.append("| Repo | Language | Updated | Description |")
     lines.append("|---|---:|---:|---|")
