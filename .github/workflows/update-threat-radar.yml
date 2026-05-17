@@ -19,8 +19,10 @@ jobs:
       - name: Update profile README
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ZD_GH_READ_TOKEN: ${{ secrets.ZD_GH_READ_TOKEN }}
           ZD_OWNER: Zeid-Data
           ZD_README_PATH: profile/README.md
+          ZD_LITHIUM_REPO: Zeid-Data/lithium
           ZD_KEV_LIMIT: "8"
           ZD_REPO_LIMIT: "6"
         run: |
