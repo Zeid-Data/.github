@@ -68,7 +68,7 @@ Defensive security engineering, detection content, and operational data systems.
 
 | Repository | Description | Language | Stars | Updated |
 | --- | --- | --- | --- | --- |
-| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-17T09:19:10Z |
+| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-17T10:43:20Z |
 | [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | Python | 0 | 2026-05-13T13:46:20Z |
 
 ## Operating Principles
@@ -83,33 +83,6 @@ Defensive security engineering, detection content, and operational data systems.
 
 ---
 
-Last generated: `2026-05-17 10:00:54 UTC`
+Last generated: `2026-05-18 04:45:04 UTC`
 
 <!-- ZEID-DATA:README:END -->
-
-<!-- NOW_BUILDING:START -->
-**Current Objective:** Stabilize the Lithium build tracker and Zeid Data profile automation.
-<!-- NOW_BUILDING:END -->
-
-<!-- LITHIUM_BUILD_STATUS:START -->
-| Component | Status | Notes |
-|---|---:|---|
-| Lithium | In progress | Static fallback until the updater writes live status. |
-| Profile automation | In progress | Dynamic markers are present and ready for workflow updates. |
-<!-- LITHIUM_BUILD_STATUS:END -->
-
-<!-- THREAT_INTEL_RADAR:START -->
-| Severity | Focus Area | Defensive Action |
-|---|---|---|
-| High | Credential theft tradecraft | Detection engineering, telemetry review, Sigma/KQL/SPL coverage |
-| Medium | Public exposure drift | Asset review, repo hygiene, link validation |
-| Low | Documentation decay | Automated README refresh and validation |
-<!-- THREAT_INTEL_RADAR:END -->
-
-<!-- DEFENSIVE_BUILD_MAP:START -->
-| Track | Output |
-|---|---|
-| Detection Engineering | Sigma, KQL, SPL, Elastic-ready logic |
-| Evidence Pipeline | Structured records, validation, provenance |
-| Automation | Repeatable scripts, CI checks, rollback path |
-<!-- DEFENSIVE_BUILD_MAP:END -->
