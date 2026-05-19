@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-profile-readme:
@@ -34,16 +35,31 @@ jobs:
         run: |
           python scripts/update_profile_readme.py --org Zeid-Data --readme profile/README.md --check-links
 
-      - name: Commit README changes
+      - name: Create pull request for README changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -z "$(git status --porcelain -- profile/README.md)" ]; then
             echo "No README changes."
             exit 0
           fi
 
+          BRANCH="automation/update-profile-readme"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          git checkout -B "$BRANCH"
           git add profile/README.md
           git commit -m "chore: update organization profile readme"
-          git push
+          git push --force-with-lease origin "$BRANCH"
+
+          if gh pr view "$BRANCH" --json number --jq '.number' >/dev/null 2>&1; then
+            echo "PR already exists for $BRANCH"
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: update organization profile readme" \
+              --body "Automated README refresh from GitHub Actions."
+          fi
