@@ -54,7 +54,7 @@ Defensive security engineering, detection content, and operational data systems.
 ## Threat Intel Radar
 
 <!-- ZD_THREAT_RADAR_START -->
-_Auto-updated: `2026-05-21 17:17 UTC`_
+_Auto-updated: `2026-05-21 17:19 UTC`_
 
 ### Current exploited vulnerability radar
 
@@ -86,8 +86,12 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Signal | Value |
 |---|---|
 | Repository | `Zeid-Data/lithium` |
-| Status | Private or unavailable to this workflow token |
-| Enable dynamic tracker | Add repository secret `ZD_GH_READ_TOKEN` with read access to `Zeid-Data/lithium` |
+| Visibility | `private` |
+| Language | `mixed` |
+| Default branch | `main` |
+| Last push | `2026-05-21T02:52:54Z` |
+| Latest commit | `935a5c2` Add Lithium README |
+| Latest workflow | No workflow run visible |
 
 ### Public build tracker
 
