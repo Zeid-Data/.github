@@ -36,30 +36,118 @@ jobs:
           python scripts/update_profile_readme.py --org Zeid-Data --readme profile/README.md --check-links
 
       - name: Create pull request for README changes
+
         env:
+
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
         run: |
-          if [ -z "$(git status --porcelain -- profile/README.md)" ]; then
+
+          set -euo pipefail
+
+
+          if git diff --quiet -- profile/README.md; then
+
             echo "No README changes."
+
             exit 0
+
           fi
+
 
           BRANCH="automation/update-profile-readme"
 
+          PATCH_FILE="$(mktemp)"
+
+
+          git diff --binary -- profile/README.md > "$PATCH_FILE"
+
+
           git config user.name "github-actions[bot]"
+
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git checkout -B "$BRANCH"
-          git add profile/README.md
+
+          git fetch origin main --depth=1
+
+          git checkout -B "$BRANCH" origin/main
+
+
+          git apply --index "$PATCH_FILE"
+
+
+          if git diff --cached --quiet; then
+
+            echo "No staged README changes after applying patch."
+
+            exit 0
+
+          fi
+
+
           git commit -m "chore: update organization profile readme"
-          git push --force-with-lease origin "$BRANCH"
+
+
+          pushed=0
+
+          for attempt in 1 2 3; do
+
+            git fetch origin "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" --depth=1 2>/dev/null || true
+
+
+            if REMOTE_SHA="$(git rev-parse -q --verify "refs/remotes/origin/${BRANCH}")"; then
+
+              if git push --force-with-lease="refs/heads/${BRANCH}:${REMOTE_SHA}" origin "HEAD:refs/heads/${BRANCH}"; then
+
+                pushed=1
+
+                break
+
+              fi
+
+            else
+
+              if git push origin "HEAD:refs/heads/${BRANCH}"; then
+
+                pushed=1
+
+                break
+
+              fi
+
+            fi
+
+
+            echo "Push attempt ${attempt} failed, retrying after fresh fetch..."
+
+            sleep $((attempt * 2))
+
+          done
+
+
+          if [ "$pushed" != "1" ]; then
+
+            echo "Failed to push ${BRANCH} after retries."
+
+            exit 1
+
+          fi
+
 
           if gh pr view "$BRANCH" --json number --jq '.number' >/dev/null 2>&1; then
+
             echo "PR already exists for $BRANCH"
+
           else
+
             gh pr create \
+
               --base main \
+
               --head "$BRANCH" \
+
               --title "chore: update organization profile readme" \
+
               --body "Automated README refresh from GitHub Actions."
+
           fi
