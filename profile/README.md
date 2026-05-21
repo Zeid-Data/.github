@@ -1,4 +1,4 @@
-<p align="center"><a href="https://github.com/Zeid-Data"><img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" alt="Zeid Data Research" width="100%"></a></p>
+﻿<p align="center"><a href="https://github.com/Zeid-Data"><img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" alt="Zeid Data Research" width="100%"></a></p>
 
 # Zeid Data
 
@@ -25,11 +25,11 @@ Defensive security engineering, detection content, and operational data systems.
 | Detection Engineering | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Sigma, KQL, SPL, Elastic, structured indicators, and defensive validation scripts. | Convert repeatable incident patterns into tested detection content. |
 | Infrastructure Hardening | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Inventory, configuration review, service exposure checks, and rollback-safe automation. | Keep scripts small, auditable, reversible, and evidence-producing. |
 
-## 🤖 Lithium Bot Tracker
+## ðŸ¤– Lithium Bot Tracker
 
 <table>
 <tr>
-<td width="70" align="center">🤖</td>
+<td width="70" align="center">ðŸ¤–</td>
 <td>
 <strong>Lithium status:</strong> Running private build<br>
 <strong>Current read:</strong> Auth-gated React dashboard backed by normalized SQLite evidence records<br>
@@ -53,14 +53,51 @@ Defensive security engineering, detection content, and operational data systems.
 
 ## Threat Intel Radar
 
-| Pattern | Severity | Defender Focus | Signals | Build Response |
-| --- | --- | --- | --- | --- |
-| Credential phishing and token replay | ![Severity: Critical](https://img.shields.io/badge/Severity-Critical-red) | Identity telemetry, mailbox rules, OAuth grants, session anomalies, and account recovery evidence. | New consent grant<br>Impossible travel<br>Unexpected mailbox rule<br>Suspicious successful login | Identity review scripts, detection logic, and incident evidence checklists. |
-| Infostealer-driven account takeover | ![Severity: Critical](https://img.shields.io/badge/Severity-Critical-red) | Endpoint evidence, browser token exposure, password reuse, and post-compromise cleanup. | Credential reuse<br>New device login<br>Password reset activity<br>Unusual data access | Host review commands, account reset workflow, and detection content. |
-| Repository secret exposure | ![Severity: High](https://img.shields.io/badge/Severity-High-orange) | Git history, exposed tokens, stale credentials, and unsafe config files. | Secret-like filenames<br>Token-shaped strings<br>Committed environment files<br>Suspicious workflow permissions | Repo audit scripts, rotation checklist, and pre-commit scanning guidance. |
-| Suspicious PowerShell persistence | ![Severity: High](https://img.shields.io/badge/Severity-High-orange) | Scheduled tasks, services, startup entries, encoded commands, and userland persistence. | Encoded command usage<br>Unknown scheduled task<br>Unexpected service binary path<br>Run key modification | Windows inventory scripts, persistence review, and safe-disable workflows. |
-| Cloud key exposure and over-permissioning | ![Severity: High](https://img.shields.io/badge/Severity-High-orange) | Access keys, IAM policies, public buckets, logging gaps, and unused privileges. | Unused access key<br>Overbroad policy<br>Public storage object<br>Missing audit trail | Cloud inventory checks, least-privilege review, and exposure reports. |
-| Public surface scraping and impersonation risk | ![Severity: Medium](https://img.shields.io/badge/Severity-Medium-yellow) | Public metadata, profile visibility, brand impersonation, and exposed contact paths. | New lookalike account<br>Public metadata drift<br>Unexpected indexed asset<br>Unauthorized brand reuse | Public-surface audit tooling, reporting templates, and evidence capture. |
+<!-- ZD_THREAT_RADAR_START -->
+_Auto-updated: `2026-05-21 17:17 UTC`_
+
+### Current exploited vulnerability radar
+
+Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Data operational severity, not a CVSS score.
+
+| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |
+|---|---|---|---|---:|---:|---|---|
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2008-4250` | Microsoft Windows | Memory corruption | `2026-05-20` | `2026-06-03` | Patch-priority radar and host-update validation | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2009-1537` | Microsoft DirectX | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2009-3459` | Adobe Acrobat and Reader | Memory corruption | `2026-05-20` | `2026-06-03` | Patch-priority radar and host-update validation | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2010-0249` | Microsoft Internet Explorer | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2010-0806` | Microsoft Internet Explorer | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-41091` | Microsoft Defender | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-45498` | Microsoft Defender | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-42897` | Microsoft Microsoft | Cross-site scripting | `2026-05-15` | `2026-05-29` | Web hygiene checks, CSP review, validation fixtures | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+
+### What we’re building to reduce the pattern
+
+| Pattern | Evidence to look for | Zeid Data build |
+|---|---|---|
+| Exploited CVEs | Known exploited products, missing patch evidence, internet exposure | KEV radar, exposure checks, patch validation |
+| Public metadata exposure | Public profiles, account linkage, visible relationships | Authorized public visibility audit tooling |
+| Windows persistence | New services, scheduled tasks, startup entries, orphan binaries | Suspicious persistence inventory and cleanup scripts |
+| Detection gaps | Missing SIEM rules, weak telemetry, untested assumptions | Sigma, KQL, SPL, and Elastic detections |
+| Weak evidence chain | Findings without logs, source refs, or reproducible tests | Normalized evidence records, source refs, reports, dashboards |
+
+### Lithium build tracker
+
+| Signal | Value |
+|---|---|
+| Repository | `Zeid-Data/lithium` |
+| Status | Private or unavailable to this workflow token |
+| Enable dynamic tracker | Add repository secret `ZD_GH_READ_TOKEN` with read access to `Zeid-Data/lithium` |
+
+### Public build tracker
+
+| Repo | Language | Updated | Description |
+|---|---:|---:|---|
+| [Zeid-Data/.github](https://github.com/Zeid-Data/.github) | Python | `2026-05-21` | Zeid Data organization profile and dynamic threat intel radar |
+| [Zeid-Data/dominos_source](https://github.com/Zeid-Data/dominos_source) | Python | `2026-05-17` | Python bindings for the Domino APIs |
+
+> Threat intel is only useful when it becomes a control, a detection, a test, or a fix.
+<!-- ZD_THREAT_RADAR_END -->
 
 ## Defensive Build Map
 
@@ -93,3 +130,4 @@ Defensive security engineering, detection content, and operational data systems.
 Last generated: `2026-05-21`
 
 <!-- ZEID-DATA:README:END -->
+
