@@ -20,7 +20,7 @@ Defensive security engineering, detection content, and operational data systems.
 
 | Track | Status | Focus | Next |
 | --- | --- | --- | --- |
-| Lithium | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Evidence-linked operational analytics, normalized records, dashboard search, and privacy-aware review flows. | Validate fresh records, searchable drilldowns, viewer gates, and source-linked summaries. |
+| Lithium | ![Status: Running private build](https://img.shields.io/badge/Status-Running%20private%20build-0f766e) | Auth-gated React/Vite dashboard, SQLite-backed normalized evidence records, relative API routing, search-first review, and privacy-aware evidence drilldowns. | Prove the active React shell is the served UI, keep chat logs searchable, validate evidence drawer cleanup, and preserve viewer-gated API behavior. |
 | Speculum | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Authorized public-surface review utilities and security audit workflows. | Expand tests, reporting, documentation, and safe input validation. |
 | Detection Engineering | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Sigma, KQL, SPL, Elastic, structured indicators, and defensive validation scripts. | Convert repeatable incident patterns into tested detection content. |
 | Infrastructure Hardening | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Inventory, configuration review, service exposure checks, and rollback-safe automation. | Keep scripts small, auditable, reversible, and evidence-producing. |
@@ -31,18 +31,25 @@ Defensive security engineering, detection content, and operational data systems.
 <tr>
 <td width="70" align="center">🤖</td>
 <td>
-<strong>Lithium bot status:</strong> Active build<br>
-<strong>Current read:</strong> SQLite-backed normalized evidence records<br>
-<strong>Next proof:</strong> Fresh record timestamps
+<strong>Lithium status:</strong> Running private build<br>
+<strong>Current read:</strong> Auth-gated React dashboard backed by normalized SQLite evidence records<br>
+<strong>Next proof:</strong> Served UI must match the active React shell build, not stale dashboard assets
 </td>
 </tr>
 </table>
 
-| Area | Details |
+| Area | Current running state |
 | --- | --- |
-| Status | ![Lithium: Active build](https://img.shields.io/badge/Lithium-Active%20build-7c3aed) |
-| Current focus | SQLite-backed normalized evidence records<br>Readable relationship and operational signal dashboards<br>Search-first drilldown views<br>Viewer-aware access controls<br>Evidence references attached to every claim |
-| Validation targets | Fresh record timestamps<br>Non-empty message text where expected<br>Stable profile identity mapping<br>Permission-filtered dashboard responses<br>No raw file dependency in runtime dashboard views |
+| Status | ![Lithium: Running private build](https://img.shields.io/badge/Lithium-Running%20private%20build-7c3aed) |
+| Public boundary | Dashboard traffic enters through an authenticated Nginx proxy. Unauthenticated dashboard and API requests are expected to return `401 Unauthorized`. |
+| Frontend | React/Vite dashboard shell. User-facing UI name is `Lithium`. The active UI must be served from the current React shell build, not legacy Streamlit pages, stale release folders, or copied dashboard assets. |
+| API contract | Frontend uses relative same-origin API calls, especially `GET /api/chat/events`. Public IPs, localhost ports, tokens, chat IDs, and direct backend service ports are intentionally not documented here. |
+| Data layer | SQLite-backed normalized dashboard records. Raw Telegram, journal, memory, and bridge files are treated as source evidence, not runtime dashboard data sources. |
+| Access model | Dashboard access is viewer-gated. Admin views and normal evidence views are separated. Unknown or unauthenticated viewers are blocked before records are exposed. |
+| Current UI priority | Chat Logs first: search, profile filters, source filters, count audit bar, readable table columns, row-click evidence drawer, and clean technical evidence details. |
+| Evidence rule | Claims, summaries, filters, and dashboard cards must link back to evidence records or clearly show that evidence is missing. No fake scores, unsupported insights, or raw JSON dumps in the normal UI. |
+| Active services summary | Nginx, React shell, dashboard backend/proxy, public API proxy, and chat events API are active. A duplicate React API service was intentionally disabled to avoid port collision. |
+| Safety note | No secrets are stored in this public tracker. Runtime credentials, private messages, chat IDs, tokens, passwords, and private evidence text are excluded. |
 
 ## Threat Intel Radar
 
@@ -68,7 +75,7 @@ Defensive security engineering, detection content, and operational data systems.
 
 | Repository | Description | Language | Stars | Updated |
 | --- | --- | --- | --- | --- |
-| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-19T05:39:07Z |
+| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-21 |
 | [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | Python | 0 | 2026-05-13T13:46:20Z |
 
 ## Operating Principles
@@ -83,6 +90,6 @@ Defensive security engineering, detection content, and operational data systems.
 
 ---
 
-Last generated: `2026-05-19 05:39:12 UTC`
+Last generated: `2026-05-21`
 
 <!-- ZEID-DATA:README:END -->
