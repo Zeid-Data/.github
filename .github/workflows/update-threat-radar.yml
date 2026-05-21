@@ -1,4 +1,4 @@
-name: Update threat radar
+﻿name: Update threat radar
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Update profile README
         env:
@@ -40,3 +40,4 @@ jobs:
           git add profile/README.md
           git commit -m "Update Zeid Data threat radar"
           git push
+
