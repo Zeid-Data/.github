@@ -54,7 +54,7 @@ Defensive security engineering, detection content, and operational data systems.
 ## Threat Intel Radar
 
 <!-- ZD_THREAT_RADAR_START -->
-_Auto-updated: `2026-05-22 04:35 UTC`_
+_Auto-updated: `2026-05-22 09:50 UTC`_
 
 ### Current exploited vulnerability radar
 
@@ -97,7 +97,7 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 
 | Repo | Language | Updated | Description |
 |---|---:|---:|---|
-| [Zeid-Data/.github](https://github.com/Zeid-Data/.github) | Python | `2026-05-21` | Zeid Data organization profile and dynamic threat intel radar |
+| [Zeid-Data/.github](https://github.com/Zeid-Data/.github) | Python | `2026-05-22` | Zeid Data organization profile and dynamic threat intel radar |
 | [Zeid-Data/dominos_source](https://github.com/Zeid-Data/dominos_source) | Python | `2026-05-17` | Python bindings for the Domino APIs |
 
 > Threat intel is only useful when it becomes a control, a detection, a test, or a fix.
