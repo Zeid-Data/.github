@@ -54,7 +54,7 @@ Defensive security engineering, detection content, and operational data systems.
 ## Threat Intel Radar
 
 <!-- ZD_THREAT_RADAR_START -->
-_Auto-updated: `2026-05-22 09:50 UTC`_
+_Auto-updated: `2026-05-22 15:24 UTC`_
 
 ### Current exploited vulnerability radar
 
