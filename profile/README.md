@@ -1,10 +1,10 @@
 <p align="center"><a href="https://github.com/Zeid-Data"><img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" alt="Zeid Data Research" width="100%"></a></p>
 
-# Zeid Data Labs
+# Zeid Data
 
 ![Focus: Defensive Security](https://img.shields.io/badge/Focus-Defensive%20Security-0f766e) ![Build: Evidence First](https://img.shields.io/badge/Build-Evidence%20First-111827) ![Ops: Reproducible](https://img.shields.io/badge/Ops-Reproducible-2563eb) ![Scope: Authorized Review](https://img.shields.io/badge/Scope-Authorized%20Review-7c2d12)
 
-Defensive security engineering, detection content, public-surface review tooling, and operational data systems.
+Defensive security engineering, detection content, and operational data systems.
 
 <!-- ZEID-DATA:README:BEGIN -->
 
@@ -13,56 +13,65 @@ Defensive security engineering, detection content, public-surface review tooling
 | Principle |
 | --- |
 | Build practical tools for authorized security review. |
-| Turn evidence, logs, telemetry, and source records into measurable defensive action. |
-| Keep security work reproducible, auditable, public-safe, and grounded in artifacts. |
+| Turn evidence, logs, and telemetry into measurable defensive action. |
+| Keep security work reproducible, auditable, and grounded in artifacts. |
 
-## Active Tracks
+## Now Building
 
-| Track | Public output | Evidence standard |
-| --- | --- | --- |
-| Detection Engineering | Sigma, KQL, SPL, Elastic logic, IOC structures, validation notes | Rule, source reference, test case, or telemetry requirement |
-| Threat Intel Radar | KEV watch, exploit-priority patterns, patch-validation prompts | External source link and defensive action |
-| Public Surface Review | Exposure checks, repository hygiene, metadata review, safe audit workflows | Authorized target, captured finding, remediation path |
-| Operational Dashboards | Evidence-first dashboards, report patterns, SOC-style workbooks | Drilldown source record or explicit evidence-missing state |
-| Automation | Python, PowerShell, Bash validators and collectors | What it read, what it changed, and how to roll back |
+| Track | Status | Focus | Next |
+| --- | --- | --- | --- |
+| Lithium | ![Status: Running private build](https://img.shields.io/badge/Status-Running%20private%20build-0f766e) | Auth-gated React/Vite dashboard, SQLite-backed normalized evidence records, relative API routing, search-first review, and privacy-aware evidence drilldowns. | Prove the active React shell is the served UI, keep chat logs searchable, validate evidence drawer cleanup, and preserve viewer-gated API behavior. |
+| Speculum | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Authorized public-surface review utilities and security audit workflows. | Expand tests, reporting, documentation, and safe input validation. |
+| Detection Engineering | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Sigma, KQL, SPL, Elastic, structured indicators, and defensive validation scripts. | Convert repeatable incident patterns into tested detection content. |
+| Infrastructure Hardening | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Inventory, configuration review, service exposure checks, and rollback-safe automation. | Keep scripts small, auditable, reversible, and evidence-producing. |
 
-## Lab Console
+## Lithium Bot Tracker
+
+<table>
+<tr>
+<td width="70" align="center">Li</td>
+<td>
+<strong>Lithium status:</strong> Running private build<br>
+<strong>Current read:</strong> Auth-gated React dashboard backed by normalized SQLite evidence records<br>
+<strong>Next proof:</strong> Served UI must match the active React shell build, not stale dashboard assets
+</td>
+</tr>
+</table>
+
+| Area | Current running state |
+| --- | --- |
+| Status | ![Lithium: Running private build](https://img.shields.io/badge/Lithium-Running%20private%20build-7c3aed) |
+| Public boundary | Dashboard traffic enters through an authenticated Nginx proxy. Unauthenticated dashboard and API requests are expected to return `401 Unauthorized`. |
+| Frontend | React/Vite dashboard shell. User-facing UI name is `Lithium`. The active UI must be served from the current React shell build, not legacy Streamlit pages, stale release folders, or copied dashboard assets. |
+| API contract | Frontend uses relative same-origin API calls, especially `GET /api/chat/events`. Public IPs, localhost ports, tokens, chat IDs, and direct backend service ports are intentionally not documented here. |
+| Data layer | SQLite-backed normalized dashboard records. Raw Telegram, journal, memory, and bridge files are treated as source evidence, not runtime dashboard data sources. |
+| Access model | Dashboard access is viewer-gated. Admin views and normal evidence views are separated. Unknown or unauthenticated viewers are blocked before records are exposed. |
+| Current UI priority | Chat Logs first: search, profile filters, source filters, count audit bar, readable table columns, row-click evidence drawer, and clean technical evidence details. |
+| Evidence rule | Claims, summaries, filters, and dashboard cards must link back to evidence records or clearly show that evidence is missing. No fake scores, unsupported insights, or raw JSON dumps in the normal UI. |
+| Active services summary | Nginx, React shell, dashboard backend/proxy, public API proxy, and chat events API are active. A duplicate React API service was intentionally disabled to avoid port collision. |
+| Safety note | No secrets are stored in this public tracker. Runtime credentials, private messages, chat IDs, tokens, passwords, and private evidence text are excluded. |
+
+## Threat Intel Radar
 
 <!-- ZD_THREAT_RADAR_START -->
-_Auto-updated: `2026-05-31 23:56 UTC`_
+_Auto-updated: `2026-05-22 15:24 UTC`_
 
-### Live Lab Status
-
-| Signal | Current | Evidence |
-|---|---|---|
-| Public repos tracked | `2` | [GitHub org](https://github.com/Zeid-Data?tab=repositories) |
-| Latest public ship | Expand organization README lab console generator | [commit](https://github.com/Zeid-Data/.github/commit/3785f4626968a03201f247db59c9a4b142a81178) |
-| Threat radar freshness | Dynamic feed backed by CISA KEV. Next scheduled workflow refresh will verify current feed date. | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) |
-| Automation cadence | Scheduled every 6 hours plus manual dispatch | [workflow](https://github.com/Zeid-Data/.github/actions/workflows/update-threat-radar.yml) |
-
-### Shipped This Week
-
-| Project | Change | Evidence | Date |
-|---|---|---|---:|
-| [.github](https://github.com/Zeid-Data/.github) | Expand organization README lab console generator | [commit](https://github.com/Zeid-Data/.github/commit/3785f4626968a03201f247db59c9a4b142a81178) | `2026-05-31` |
-| [.github](https://github.com/Zeid-Data/.github) | Refresh organization README automation workflow | [commit](https://github.com/Zeid-Data/.github/commit/fdb3eeb6ccd3e40bbe7ddac2425f4f7c0a5206e0) | `2026-05-31` |
-
-### Current Exploited Vulnerability Radar
+### Current exploited vulnerability radar
 
 Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Data operational severity, not a CVSS score.
 
-| Severity | CVE | Product | Risk class | Added | Due | Defensive build | Rationale |
+| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |
 |---|---|---|---|---:|---:|---|---|
-| <img alt="Review" src="https://img.shields.io/badge/Review-blue?style=flat-square"> | Dynamic on next workflow run | CISA KEV feed | Known exploited vulnerability | dynamic | dynamic | KEV radar, exposure checks, patch validation | This row is a safe placeholder until the scheduled workflow rewrites the radar. |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2025-34291` | Langflow Langflow | Known exploited vulnerability | `2026-05-21` | `2026-06-04` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-34926` | Trend Micro Apex One | Path traversal/file exposure | `2026-05-21` | `2026-06-04` | Route/file exposure audit, web evidence capture, remediation report | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2008-4250` | Microsoft Windows | Memory corruption | `2026-05-20` | `2026-06-03` | Patch-priority radar and host-update validation | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2009-1537` | Microsoft DirectX | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2009-3459` | Adobe Acrobat and Reader | Memory corruption | `2026-05-20` | `2026-06-03` | Patch-priority radar and host-update validation | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2010-0249` | Microsoft Internet Explorer | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2010-0806` | Microsoft Internet Explorer | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-41091` | Microsoft Defender | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
 
-### Public Repository Feed
-
-| Repository | Latest public signal | Build health | Updated |
-|---|---|---|---:|
-| [.github](https://github.com/Zeid-Data/.github) | [Expand organization README lab console generator](https://github.com/Zeid-Data/.github/commit/3785f4626968a03201f247db59c9a4b142a81178) | [Update Zeid Data lab console](https://github.com/Zeid-Data/.github/actions/workflows/update-threat-radar.yml) | `2026-05-31` |
-| [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | No public workflow run visible | `2026-05-17` |
-
-### What We Build From These Signals
+### What we’re building to reduce the pattern
 
 | Pattern | Evidence to look for | Zeid Data build |
 |---|---|---|
@@ -71,6 +80,25 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Windows persistence | New services, scheduled tasks, startup entries, orphan binaries | Suspicious persistence inventory and cleanup scripts |
 | Detection gaps | Missing SIEM rules, weak telemetry, untested assumptions | Sigma, KQL, SPL, and Elastic detections |
 | Weak evidence chain | Findings without logs, source refs, or reproducible tests | Normalized evidence records, source refs, reports, dashboards |
+
+### Lithium build tracker
+
+| Signal | Value |
+|---|---|
+| Repository | `Zeid-Data/lithium` |
+| Visibility | `private` |
+| Language | `mixed` |
+| Default branch | `main` |
+| Last push | `2026-05-21T02:52:54Z` |
+| Latest commit | `935a5c2` Add Lithium README |
+| Latest workflow | No workflow run visible |
+
+### Public build tracker
+
+| Repo | Language | Updated | Description |
+|---|---:|---:|---|
+| [Zeid-Data/.github](https://github.com/Zeid-Data/.github) | Python | `2026-05-22` | Zeid Data organization profile and dynamic threat intel radar |
+| [Zeid-Data/dominos_source](https://github.com/Zeid-Data/dominos_source) | Python | `2026-05-17` | Python bindings for the Domino APIs |
 
 > Threat intel is only useful when it becomes a control, a detection, a test, or a fix.
 <!-- ZD_THREAT_RADAR_END -->
@@ -84,6 +112,13 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Endpoint persistence | Services<br>Scheduled tasks<br>Startup folders<br>Run keys<br>PowerShell logs | Persistence inventory<br>Safe-disable process<br>Script block logging<br>Change audit | Windows cleanup and persistence review toolkit |
 | Data exposure | Public assets<br>Storage permissions<br>Application logs<br>Repository metadata | Exposure inventory<br>Access review<br>Evidence capture<br>Remediation tracking | Public-surface and data exposure review workflows |
 
+## Public Repository Feed
+
+| Repository | Description | Language | Stars | Updated |
+| --- | --- | --- | --- | --- |
+| [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-05-21 |
+| [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | Python | 0 | 2026-05-13T13:46:20Z |
+
 ## Operating Principles
 
 | Rule |
@@ -93,10 +128,9 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Telemetry over vibes. |
 | Rollback paths before risky changes. |
 | Readable outputs beat clever outputs. |
-| Public front pages must not expose secrets, private logs, private messages, chat IDs, tokens, passwords, or internal-only infrastructure details. |
 
 ---
 
-Last generated: `2026-05-31`
+Last generated: `2026-05-21`
 
 <!-- ZEID-DATA:README:END -->
