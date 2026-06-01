@@ -7,15 +7,17 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 OWNER = os.getenv("ZD_OWNER", "Zeid-Data")
 README_PATH = Path(os.getenv("ZD_README_PATH", "profile/README.md"))
-KEV_LIMIT = int(os.getenv("ZD_KEV_LIMIT", "8"))
-REPO_LIMIT = int(os.getenv("ZD_REPO_LIMIT", "6"))
-LITHIUM_REPO = os.getenv("ZD_LITHIUM_REPO", "Zeid-Data/lithium")
+KEV_LIMIT = int(os.getenv("ZD_KEV_LIMIT", "6"))
+REPO_LIMIT = int(os.getenv("ZD_REPO_LIMIT", "8"))
+SHIP_LIMIT = int(os.getenv("ZD_SHIP_LIMIT", "8"))
+LOOKBACK_DAYS = int(os.getenv("ZD_LOOKBACK_DAYS", "7"))
 
 START = "<!-- ZD_THREAT_RADAR_START -->"
 END = "<!-- ZD_THREAT_RADAR_END -->"
@@ -27,7 +29,7 @@ GITHUB_API = "https://api.github.com"
 def fetch_json(url: str, token: str | None = None) -> Any:
     headers = {
         "Accept": "application/vnd.github+json, application/json",
-        "User-Agent": "zeid-data-threat-radar-profile-updater",
+        "User-Agent": "zeid-data-lab-console-readme-updater",
     }
     if token and url.startswith(GITHUB_API):
         headers["Authorization"] = f"Bearer {token}"
@@ -55,7 +57,7 @@ def clean(value: Any, default: str = "") -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def short(value: Any, default: str = "", limit: int = 130) -> str:
+def short(value: Any, default: str = "", limit: int = 120) -> str:
     text = clean(value, default)
     return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
 
@@ -65,17 +67,96 @@ def badge(label: str, color: str) -> str:
     return f'<img alt="{clean(label)}" src="https://img.shields.io/badge/{label_safe}-{color}?style=flat-square">'
 
 
-def latest_kev() -> list[dict[str, Any]]:
+def parse_time(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def short_date(value: str | None) -> str:
+    parsed = parse_time(value)
+    return parsed.strftime("%Y-%m-%d") if parsed else clean(value, "unknown")[:10]
+
+
+def latest_kev() -> tuple[list[dict[str, Any]], str]:
     data = safe_fetch(CISA_KEV_JSON, default={})
     vulns = data.get("vulnerabilities", []) if isinstance(data, dict) else []
-    return sorted(vulns, key=lambda x: x.get("dateAdded") or "0000-00-00", reverse=True)[:KEV_LIMIT]
+    if not vulns:
+        return [], "STALE: KEV feed unavailable, check workflow logs"
+    sorted_rows = sorted(vulns, key=lambda x: x.get("dateAdded") or "0000-00-00", reverse=True)
+    freshest = clean(sorted_rows[0].get("dateAdded"), "unknown")
+    return sorted_rows[:KEV_LIMIT], f"OK: latest KEV date `{freshest}`"
 
 
 def public_repos() -> list[dict[str, Any]]:
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
-    url = f"{GITHUB_API}/orgs/{OWNER}/repos?type=public&sort=pushed&direction=desc&per_page={REPO_LIMIT}"
+    url = f"{GITHUB_API}/orgs/{OWNER}/repos?type=public&sort=pushed&direction=desc&per_page=100"
     repos = safe_fetch(url, token, default=[])
-    return repos if isinstance(repos, list) else []
+    if not isinstance(repos, list):
+        return []
+    return [repo for repo in repos if isinstance(repo, dict) and not repo.get("archived") and not repo.get("fork")]
+
+
+def latest_commit(repo_full_name: str) -> dict[str, str]:
+    token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+    commits = safe_fetch(f"{GITHUB_API}/repos/{repo_full_name}/commits?per_page=1", token, default=[])
+    if not isinstance(commits, list) or not commits:
+        return {"message": "No public commit visible", "date": "unknown", "url": f"https://github.com/{repo_full_name}/commits"}
+    item = commits[0]
+    commit = item.get("commit", {})
+    date = commit.get("committer", {}).get("date") or commit.get("author", {}).get("date")
+    return {
+        "message": short(commit.get("message"), "Recent update", 90),
+        "date": short_date(date),
+        "url": clean(item.get("html_url"), f"https://github.com/{repo_full_name}/commits"),
+    }
+
+
+def latest_workflow(repo_full_name: str) -> str:
+    token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+    runs = safe_fetch(f"{GITHUB_API}/repos/{repo_full_name}/actions/runs?per_page=1", token, default={})
+    if not isinstance(runs, dict) or not runs.get("workflow_runs"):
+        return "No public workflow run"
+    run = runs["workflow_runs"][0]
+    name = short(run.get("name"), "workflow", 42)
+    status = clean(run.get("status"), "unknown")
+    conclusion = clean(run.get("conclusion"), "pending")
+    url = clean(run.get("html_url"), f"https://github.com/{repo_full_name}/actions")
+    return f"[{name}]({url}) `{status}/{conclusion}`"
+
+
+def recent_commits(repos: list[dict[str, Any]]) -> list[dict[str, str]]:
+    token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+    since = (dt.datetime.now(dt.UTC) - dt.timedelta(days=LOOKBACK_DAYS)).isoformat().replace("+00:00", "Z")
+    found: list[dict[str, str]] = []
+
+    for repo in repos[:20]:
+        full_name = clean(repo.get("full_name"))
+        if not full_name:
+            continue
+        query = urllib.parse.urlencode({"since": since, "per_page": 5})
+        commits = safe_fetch(f"{GITHUB_API}/repos/{full_name}/commits?{query}", token, default=[])
+        if not isinstance(commits, list):
+            continue
+        for item in commits:
+            commit = item.get("commit", {}) if isinstance(item, dict) else {}
+            message = short(commit.get("message"), "Recent update", 90)
+            lower = message.lower()
+            if lower.startswith("update zeid data") or lower.startswith("update lab console"):
+                continue
+            date = commit.get("committer", {}).get("date") or commit.get("author", {}).get("date")
+            found.append({
+                "repo": clean(repo.get("name"), full_name),
+                "full_name": full_name,
+                "message": message,
+                "date": short_date(date),
+                "url": clean(item.get("html_url"), f"https://github.com/{full_name}/commits"),
+            })
+
+    return sorted(found, key=lambda item: item["date"], reverse=True)[:SHIP_LIMIT]
 
 
 def classify(item: dict[str, Any]) -> tuple[str, str]:
@@ -124,76 +205,46 @@ def operational_severity(item: dict[str, Any], risk_class: str) -> tuple[str, st
     return "Review", "blue", "Known exploited, needs product exposure validation"
 
 
-def lithium_tracker() -> list[str]:
-    token = os.getenv("ZD_GH_READ_TOKEN") or os.getenv("GH_READ_TOKEN") or os.getenv("GITHUB_TOKEN")
-    repo_url = f"{GITHUB_API}/repos/{LITHIUM_REPO}"
-    repo = safe_fetch(repo_url, token, default=None)
-
-    lines = ["", "### Lithium build tracker", ""]
-    lines.append("| Signal | Value |")
-    lines.append("|---|---|")
-
-    if not isinstance(repo, dict):
-        lines.append(f"| Repository | `{LITHIUM_REPO}` |")
-        lines.append("| Status | Private or unavailable to this workflow token |")
-        lines.append("| Enable dynamic tracker | Add repository secret `ZD_GH_READ_TOKEN` with read access to `Zeid-Data/lithium` |")
-        return lines
-
-    default_branch = clean(repo.get("default_branch"), "main")
-    pushed_at = clean(repo.get("pushed_at"), "unknown")
-    visibility = clean(repo.get("visibility"), "unknown")
-    language = clean(repo.get("language"), "mixed")
-
-    commits = safe_fetch(
-        f"{GITHUB_API}/repos/{LITHIUM_REPO}/commits?sha={default_branch}&per_page=1",
-        token,
-        default=[],
-    )
-    latest_commit = "unavailable"
-    if isinstance(commits, list) and commits:
-        commit = commits[0]
-        sha = clean(commit.get("sha"), "")[:7]
-        message = clean(commit.get("commit", {}).get("message"), "").split("\\n", 1)[0]
-        latest_commit = f"`{sha}` {short(message, 'no message', 90)}"
-
-    runs = safe_fetch(
-        f"{GITHUB_API}/repos/{LITHIUM_REPO}/actions/runs?branch={default_branch}&per_page=1",
-        token,
-        default={},
-    )
-    latest_run = "No workflow run visible"
-    if isinstance(runs, dict) and runs.get("workflow_runs"):
-        run = runs["workflow_runs"][0]
-        status = clean(run.get("status"), "unknown")
-        conclusion = clean(run.get("conclusion"), "pending")
-        name = clean(run.get("name"), "workflow")
-        created = clean(run.get("created_at"), "unknown")
-        latest_run = f"{name}: `{status}/{conclusion}` at `{created}`"
-
-    lines.append(f"| Repository | `{LITHIUM_REPO}` |")
-    lines.append(f"| Visibility | `{visibility}` |")
-    lines.append(f"| Language | `{language}` |")
-    lines.append(f"| Default branch | `{default_branch}` |")
-    lines.append(f"| Last push | `{pushed_at}` |")
-    lines.append(f"| Latest commit | {latest_commit} |")
-    lines.append(f"| Latest workflow | {latest_run} |")
-    return lines
-
-
 def render() -> str:
     now = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
-    lines: list[str] = []
+    repos = public_repos()
+    kev_rows, kev_freshness = latest_kev()
+    commits = recent_commits(repos)
+    latest_ship = commits[0] if commits else None
 
+    lines: list[str] = []
     lines.append(f"_Auto-updated: `{now}`_")
     lines.append("")
-    lines.append("### Current exploited vulnerability radar")
+    lines.append("### Live Lab Status")
+    lines.append("")
+    lines.append("| Signal | Current | Evidence |")
+    lines.append("|---|---|---|")
+    lines.append(f"| Public repos tracked | `{len(repos)}` | [GitHub org](https://github.com/{OWNER}?tab=repositories) |")
+    if latest_ship:
+        lines.append(f"| Latest public ship | {latest_ship['message']} | [commit]({latest_ship['url']}) |")
+    else:
+        lines.append(f"| Latest public ship | No public commit in last {LOOKBACK_DAYS} days | [GitHub org](https://github.com/{OWNER}) |")
+    lines.append(f"| Threat radar freshness | {kev_freshness} | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) |")
+    lines.append(f"| Automation cadence | Scheduled every 6 hours plus manual dispatch | [workflow](https://github.com/{OWNER}/.github/actions/workflows/update-threat-radar.yml) |")
+
+    lines.append("")
+    lines.append("### Shipped This Week")
+    lines.append("")
+    lines.append("| Project | Change | Evidence | Date |")
+    lines.append("|---|---|---|---:|")
+    if commits:
+        for item in commits:
+            lines.append(f"| [{item['repo']}](https://github.com/{item['full_name']}) | {item['message']} | [commit]({item['url']}) | `{item['date']}` |")
+    else:
+        lines.append(f"| Public activity | No public commits found in the last {LOOKBACK_DAYS} days | [GitHub org](https://github.com/{OWNER}) | unknown |")
+
+    lines.append("")
+    lines.append("### Current Exploited Vulnerability Radar")
     lines.append("")
     lines.append("Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Data operational severity, not a CVSS score.")
     lines.append("")
-    lines.append("| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |")
+    lines.append("| Severity | CVE | Product | Risk class | Added | Due | Defensive build | Rationale |")
     lines.append("|---|---|---|---|---:|---:|---|---|")
-
-    kev_rows = latest_kev()
     if not kev_rows:
         lines.append(f"| {badge('Review', 'blue')} | KEV fetch unavailable | n/a | n/a | n/a | n/a | Check workflow logs and network access | Feed unavailable |")
     else:
@@ -207,7 +258,23 @@ def render() -> str:
             lines.append(f"| {badge(sev, color)} | `{cve}` | {product} | {risk} | `{added}` | `{due}` | {build} | {rationale} |")
 
     lines.append("")
-    lines.append("### What we’re building to reduce the pattern")
+    lines.append("### Public Repository Feed")
+    lines.append("")
+    lines.append("| Repository | Latest public signal | Build health | Updated |")
+    lines.append("|---|---|---|---:|")
+    if not repos:
+        lines.append("| Public repo fetch unavailable | n/a | Check workflow logs | unknown |")
+    else:
+        for repo in repos[:REPO_LIMIT]:
+            full_name = clean(repo.get("full_name"), "unknown")
+            name = clean(repo.get("name"), full_name)
+            url = clean(repo.get("html_url"), f"https://github.com/{full_name}")
+            commit = latest_commit(full_name)
+            workflow = latest_workflow(full_name)
+            lines.append(f"| [{name}]({url}) | [{commit['message']}]({commit['url']}) | {workflow} | `{commit['date']}` |")
+
+    lines.append("")
+    lines.append("### What We Build From These Signals")
     lines.append("")
     lines.append("| Pattern | Evidence to look for | Zeid Data build |")
     lines.append("|---|---|---|")
@@ -216,26 +283,6 @@ def render() -> str:
     lines.append("| Windows persistence | New services, scheduled tasks, startup entries, orphan binaries | Suspicious persistence inventory and cleanup scripts |")
     lines.append("| Detection gaps | Missing SIEM rules, weak telemetry, untested assumptions | Sigma, KQL, SPL, and Elastic detections |")
     lines.append("| Weak evidence chain | Findings without logs, source refs, or reproducible tests | Normalized evidence records, source refs, reports, dashboards |")
-
-    lines.extend(lithium_tracker())
-
-    repos = public_repos()
-    lines.append("")
-    lines.append("### Public build tracker")
-    lines.append("")
-    lines.append("| Repo | Language | Updated | Description |")
-    lines.append("|---|---:|---:|---|")
-
-    if not repos:
-        lines.append("| Public repo fetch unavailable | n/a | n/a | Check workflow logs |")
-    else:
-        for repo in repos:
-            name = clean(repo.get("full_name"), "unknown")
-            url = clean(repo.get("html_url"), "")
-            lang = clean(repo.get("language"), "mixed")
-            updated = clean(repo.get("pushed_at"), "unknown")[:10]
-            desc = short(repo.get("description"), "No description yet.")
-            lines.append(f"| [{name}]({url}) | {lang} | `{updated}` | {desc} |")
 
     lines.append("")
     lines.append("> Threat intel is only useful when it becomes a control, a detection, a test, or a fix.")
@@ -247,7 +294,7 @@ def main() -> int:
         print(f"[FAIL] missing README: {README_PATH}", file=sys.stderr)
         return 2
 
-    original = README_PATH.read_text(encoding="utf-8")
+    original = README_PATH.read_text(encoding="utf-8-sig")
     if START not in original or END not in original:
         print("[FAIL] README missing dynamic markers", file=sys.stderr)
         return 3
