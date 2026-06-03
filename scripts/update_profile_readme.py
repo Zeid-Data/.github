@@ -23,6 +23,9 @@ SOURCE_BANNER_MARKDOWN = (
     '</p>'
 )
 
+RADAR_START = "<!-- ZD_THREAT_RADAR_START -->"
+RADAR_END = "<!-- ZD_THREAT_RADAR_END -->"
+
 
 def repo_root() -> Path:
     result = subprocess.run(
@@ -80,30 +83,11 @@ def badge(label: str, message: str, color: str) -> str:
     return f"![{alt}](https://img.shields.io/badge/{quote_badge(label)}-{quote_badge(message)}-{quote_badge(color)})"
 
 
-def severity_color(severity: str) -> str:
-    lookup = {
-        "critical": "red",
-        "high": "orange",
-        "medium": "yellow",
-        "low": "blue",
-        "info": "lightgrey",
-    }
-    return lookup.get(str(severity).strip().lower(), "lightgrey")
-
-
 def clean_cell(value: Any) -> str:
     if isinstance(value, list):
         return "<br>".join(clean_cell(item) for item in value)
     text = "" if value is None else str(value)
     return text.replace("|", "\\|").replace("\n", "<br>").strip()
-
-
-def first_list_item(value: Any, fallback: str) -> str:
-    if isinstance(value, list) and value:
-        return clean_cell(value[0])
-    if isinstance(value, str) and value.strip():
-        return clean_cell(value)
-    return fallback
 
 
 def table(headers: list[str], rows: list[list[Any]]) -> str:
@@ -170,24 +154,7 @@ def repo_rows(repos: list[dict[str, Any]], warnings: list[str]) -> list[list[Any
     return rows
 
 
-def lithium_robot_panel(lithium: dict[str, Any]) -> str:
-    status = clean_cell(lithium.get("status", "Unknown"))
-    focus = first_list_item(lithium.get("current_focus"), "No current focus listed.")
-    validation = first_list_item(lithium.get("validation_targets"), "No validation target listed.")
-
-    return f"""<table>
-<tr>
-<td width="70" align="center">🤖</td>
-<td>
-<strong>Lithium bot status:</strong> {status}<br>
-<strong>Current read:</strong> {focus}<br>
-<strong>Next proof:</strong> {validation}
-</td>
-</tr>
-</table>"""
-
-
-def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dict[str, Any]], warnings: list[str]) -> str:
+def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dict[str, Any]], warnings: list[str], existing_radar: str = "") -> str:
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     organization = str(now.get("organization") or "Zeid Data")
     tagline = str(now.get("tagline") or "Defensive security engineering.")
@@ -198,29 +165,6 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
         for item in now.get("now_building", [])
         if isinstance(item, dict)
     ]
-
-    lithium = now.get("lithium_tracker", {})
-    if not isinstance(lithium, dict):
-        lithium = {}
-
-    lithium_rows = [
-        ["Status", badge("Lithium", lithium.get("status", "Unknown"), "7c3aed")],
-        ["Current focus", lithium.get("current_focus", [])],
-        ["Validation targets", lithium.get("validation_targets", [])],
-    ]
-
-    radar_rows = []
-    for item in defensive.get("radar", []):
-        if not isinstance(item, dict):
-            continue
-        severity = str(item.get("severity") or "Info")
-        radar_rows.append([
-            item.get("pattern"),
-            badge("Severity", severity, severity_color(severity)),
-            item.get("defender_focus"),
-            item.get("signals", []),
-            item.get("build_response"),
-        ])
 
     build_rows = []
     for item in defensive.get("build_map", []):
@@ -237,6 +181,8 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
     warning_line = ""
     if warnings:
         warning_line = "\n> Repository metadata note: " + "; ".join(clean_cell(w) for w in warnings) + "\n"
+
+    radar_content = existing_radar.strip() if existing_radar.strip() else "_Refreshes every 6 hours with latest CISA KEV data._"
 
     return f"""{SOURCE_BANNER_MARKDOWN}
 
@@ -256,15 +202,11 @@ def build_readme(now: dict[str, Any], defensive: dict[str, Any], repos: list[dic
 
 {table(["Track", "Status", "Focus", "Next"], building_rows)}
 
-## 🤖 Lithium Bot Tracker
-
-{lithium_robot_panel(lithium)}
-
-{table(["Area", "Details"], lithium_rows)}
-
 ## Threat Intel Radar
 
-{table(["Pattern", "Severity", "Defender Focus", "Signals", "Build Response"], radar_rows)}
+{RADAR_START}
+{radar_content}
+{RADAR_END}
 
 ## Defensive Build Map
 
@@ -375,7 +317,7 @@ def kill_bad_hrefs_and_sources(markdown: str, root: Path) -> str:
         flags=re.IGNORECASE | re.DOTALL,
     )
 
-    def replace_html_anchor(match: re.Match[str]) -> str:
+    def replace_html_anchor(match: re.Match) -> str:
         href = match.group(2).strip()
         body = match.group(4)
         ok, detail = link_resolves(href, root)
@@ -391,7 +333,7 @@ def kill_bad_hrefs_and_sources(markdown: str, root: Path) -> str:
         flags=re.IGNORECASE | re.DOTALL,
     )
 
-    def replace_html_img(match: re.Match[str]) -> str:
+    def replace_html_img(match: re.Match) -> str:
         src = match.group(1).strip()
         ok, detail = link_resolves(src, root)
         if ok:
@@ -403,7 +345,7 @@ def kill_bad_hrefs_and_sources(markdown: str, root: Path) -> str:
 
     markdown_link_pattern = re.compile(r"""(?<!!)\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
 
-    def replace_markdown_link(match: re.Match[str]) -> str:
+    def replace_markdown_link(match: re.Match) -> str:
         label = match.group(1)
         href = match.group(2).strip()
         ok, detail = link_resolves(href, root)
@@ -416,7 +358,7 @@ def kill_bad_hrefs_and_sources(markdown: str, root: Path) -> str:
 
     markdown_img_pattern = re.compile(r"""!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
 
-    def replace_markdown_img(match: re.Match[str]) -> str:
+    def replace_markdown_img(match: re.Match) -> str:
         src = match.group(2).strip()
         ok, detail = link_resolves(src, root)
         if ok:
@@ -464,7 +406,13 @@ def main() -> int:
     defensive = load_json(DEFENSIVE_MAP)
     repos, warnings = fetch_org_repos(args.org, os.environ.get("GITHUB_TOKEN"), args.offline)
 
-    content = build_readme(now, defensive, repos, warnings)
+    existing_radar = ""
+    if readme_path.exists():
+        existing = readme_path.read_text(encoding="utf-8")
+        if RADAR_START in existing and RADAR_END in existing:
+            existing_radar = existing.split(RADAR_START, 1)[1].split(RADAR_END, 1)[0]
+
+    content = build_readme(now, defensive, repos, warnings, existing_radar=existing_radar)
     content = kill_bad_hrefs_and_sources(content, ROOT)
 
     readme_path.parent.mkdir(parents=True, exist_ok=True)

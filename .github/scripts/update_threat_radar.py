@@ -15,7 +15,6 @@ OWNER = os.getenv("ZD_OWNER", "Zeid-Data")
 README_PATH = Path(os.getenv("ZD_README_PATH", "profile/README.md"))
 KEV_LIMIT = int(os.getenv("ZD_KEV_LIMIT", "8"))
 REPO_LIMIT = int(os.getenv("ZD_REPO_LIMIT", "6"))
-LITHIUM_REPO = os.getenv("ZD_LITHIUM_REPO", "Zeid-Data/lithium")
 
 START = "<!-- ZD_THREAT_RADAR_START -->"
 END = "<!-- ZD_THREAT_RADAR_END -->"
@@ -124,62 +123,6 @@ def operational_severity(item: dict[str, Any], risk_class: str) -> tuple[str, st
     return "Review", "blue", "Known exploited, needs product exposure validation"
 
 
-def lithium_tracker() -> list[str]:
-    token = os.getenv("ZD_GH_READ_TOKEN") or os.getenv("GH_READ_TOKEN") or os.getenv("GITHUB_TOKEN")
-    repo_url = f"{GITHUB_API}/repos/{LITHIUM_REPO}"
-    repo = safe_fetch(repo_url, token, default=None)
-
-    lines = ["", "### Lithium build tracker", ""]
-    lines.append("| Signal | Value |")
-    lines.append("|---|---|")
-
-    if not isinstance(repo, dict):
-        lines.append(f"| Repository | `{LITHIUM_REPO}` |")
-        lines.append("| Status | Private or unavailable to this workflow token |")
-        lines.append("| Enable dynamic tracker | Add repository secret `ZD_GH_READ_TOKEN` with read access to `Zeid-Data/lithium` |")
-        return lines
-
-    default_branch = clean(repo.get("default_branch"), "main")
-    pushed_at = clean(repo.get("pushed_at"), "unknown")
-    visibility = clean(repo.get("visibility"), "unknown")
-    language = clean(repo.get("language"), "mixed")
-
-    commits = safe_fetch(
-        f"{GITHUB_API}/repos/{LITHIUM_REPO}/commits?sha={default_branch}&per_page=1",
-        token,
-        default=[],
-    )
-    latest_commit = "unavailable"
-    if isinstance(commits, list) and commits:
-        commit = commits[0]
-        sha = clean(commit.get("sha"), "")[:7]
-        message = clean(commit.get("commit", {}).get("message"), "").split("\n", 1)[0]
-        latest_commit = f"`{sha}` {short(message, 'no message', 90)}"
-
-    runs = safe_fetch(
-        f"{GITHUB_API}/repos/{LITHIUM_REPO}/actions/runs?branch={default_branch}&per_page=1",
-        token,
-        default={},
-    )
-    latest_run = "No workflow run visible"
-    if isinstance(runs, dict) and runs.get("workflow_runs"):
-        run = runs["workflow_runs"][0]
-        status = clean(run.get("status"), "unknown")
-        conclusion = clean(run.get("conclusion"), "pending")
-        name = clean(run.get("name"), "workflow")
-        created = clean(run.get("created_at"), "unknown")
-        latest_run = f"{name}: `{status}/{conclusion}` at `{created}`"
-
-    lines.append(f"| Repository | `{LITHIUM_REPO}` |")
-    lines.append(f"| Visibility | `{visibility}` |")
-    lines.append(f"| Language | `{language}` |")
-    lines.append(f"| Default branch | `{default_branch}` |")
-    lines.append(f"| Last push | `{pushed_at}` |")
-    lines.append(f"| Latest commit | {latest_commit} |")
-    lines.append(f"| Latest workflow | {latest_run} |")
-    return lines
-
-
 def render() -> str:
     now = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines: list[str] = []
@@ -207,7 +150,7 @@ def render() -> str:
             lines.append(f"| {badge(sev, color)} | `{cve}` | {product} | {risk} | `{added}` | `{due}` | {build} | {rationale} |")
 
     lines.append("")
-    lines.append("### What we’re building to reduce the pattern")
+    lines.append("### What we're building to reduce the pattern")
     lines.append("")
     lines.append("| Pattern | Evidence to look for | Zeid Data build |")
     lines.append("|---|---|---|")
@@ -216,27 +159,6 @@ def render() -> str:
     lines.append("| Windows persistence | New services, scheduled tasks, startup entries, orphan binaries | Suspicious persistence inventory and cleanup scripts |")
     lines.append("| Detection gaps | Missing SIEM rules, weak telemetry, untested assumptions | Sigma, KQL, SPL, and Elastic detections |")
     lines.append("| Weak evidence chain | Findings without logs, source refs, or reproducible tests | Normalized evidence records, source refs, reports, dashboards |")
-
-    lines.extend(lithium_tracker())
-
-    repos = public_repos()
-    lines.append("")
-    lines.append("### Public build tracker")
-    lines.append("")
-    lines.append("| Repo | Language | Updated | Description |")
-    lines.append("|---|---:|---:|---|")
-
-    if not repos:
-        lines.append("| Public repo fetch unavailable | n/a | n/a | Check workflow logs |")
-    else:
-        for repo in repos:
-            name = clean(repo.get("full_name"), "unknown")
-            url = clean(repo.get("html_url"), "")
-            lang = clean(repo.get("language"), "mixed")
-            updated = clean(repo.get("pushed_at"), "unknown")[:10]
-            desc = short(repo.get("description"), "No description yet.")
-            lines.append(f"| [{name}]({url}) | {lang} | `{updated}` | {desc} |")
-
     lines.append("")
     lines.append("> Threat intel is only useful when it becomes a control, a detection, a test, or a fix.")
     return "\n".join(lines)

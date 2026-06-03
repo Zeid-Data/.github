@@ -10,46 +10,28 @@
     {
       "track": "Lithium",
       "status": "Active build",
-      "focus": "Evidence-linked operational analytics, normalized records, dashboard search, and privacy-aware review flows.",
-      "next": "Validate fresh records, searchable drilldowns, viewer gates, and source-linked summaries."
+      "focus": "Evidence-linked analytics dashboard with normalized records and search-first review.",
+      "next": "Validate evidence drilldowns, viewer gates, and source-linked summaries."
     },
     {
       "track": "Speculum",
       "status": "Active build",
-      "focus": "Authorized public-surface review utilities and security audit workflows.",
-      "next": "Expand tests, reporting, documentation, and safe input validation."
+      "focus": "Authorized public-surface audit utilities and security review workflows.",
+      "next": "Expand tests, reporting, and input validation."
     },
     {
       "track": "Detection Engineering",
       "status": "Ongoing",
-      "focus": "Sigma, KQL, SPL, Elastic, structured indicators, and defensive validation scripts.",
-      "next": "Convert repeatable incident patterns into tested detection content."
+      "focus": "Sigma, KQL, SPL, and Elastic detections backed by structured indicators.",
+      "next": "Convert repeatable incident patterns into tested detection rules."
     },
     {
       "track": "Infrastructure Hardening",
       "status": "Ongoing",
-      "focus": "Inventory, configuration review, service exposure checks, and rollback-safe automation.",
-      "next": "Keep scripts small, auditable, reversible, and evidence-producing."
+      "focus": "Inventory, config review, service exposure checks, and rollback-safe automation.",
+      "next": "Keep scripts small, auditable, and evidence-producing."
     }
   ],
-  "lithium_tracker": {
-    "name": "Lithium Bot Tracker",
-    "status": "Active build",
-    "current_focus": [
-      "SQLite-backed normalized evidence records",
-      "Readable relationship and operational signal dashboards",
-      "Search-first drilldown views",
-      "Viewer-aware access controls",
-      "Evidence references attached to every claim"
-    ],
-    "validation_targets": [
-      "Fresh record timestamps",
-      "Non-empty message text where expected",
-      "Stable profile identity mapping",
-      "Permission-filtered dashboard responses",
-      "No raw file dependency in runtime dashboard views"
-    ]
-  },
   "operating_principles": [
     "Authorized testing only.",
     "Evidence before conclusions.",
