@@ -19,60 +19,34 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Fetch CISA KEV catalog
+      - name: Fetch GitHub Advisory Database
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if ! curl --fail --silent --show-error \
-            -o /tmp/kev.json \
-            https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json; then
-            echo "ERROR: Failed to fetch CISA KEV catalog" >&2
-            exit 1
-          fi
-          echo "[PASS] KEV catalog downloaded"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/advisories?per_page=10&sort=published&direction=desc&type=reviewed" \
+            -o /tmp/advisories.json
+          echo "[PASS] advisories fetched"
 
-      - name: Parse KEV and build table
+      - name: Parse advisories and build table
         run: |
           python3 - <<'PYEOF'
           import json
           import sys
-          from datetime import datetime, timezone, timedelta
 
           try:
-              with open('/tmp/kev.json', 'r') as f:
-                  data = json.load(f)
+              with open('/tmp/advisories.json', 'r') as f:
+                  advisories = json.load(f)
           except (json.JSONDecodeError, IOError, ValueError) as e:
-              print(f"ERROR: Failed to parse KEV JSON: {e}", file=sys.stderr)
+              print(f"ERROR: Failed to parse advisories JSON: {e}", file=sys.stderr)
               sys.exit(1)
 
-          vulnerabilities = data.get('vulnerabilities', [])
-          if not vulnerabilities:
-              print("ERROR: No vulnerabilities found in KEV data", file=sys.stderr)
+          if not isinstance(advisories, list) or not advisories:
+              print("ERROR: No advisories found in response", file=sys.stderr)
               sys.exit(1)
-
-          try:
-              sorted_vulns = sorted(
-                  vulnerabilities,
-                  key=lambda x: x.get('dateAdded', '1970-01-01'),
-                  reverse=True
-              )
-          except Exception as e:
-              print(f"ERROR: Failed to sort vulnerabilities: {e}", file=sys.stderr)
-              sys.exit(1)
-
-          top10 = sorted_vulns[:10]
-          now = datetime.now(timezone.utc)
-          seven_days_ago = now - timedelta(days=7)
-          thirty_days_ago = now - timedelta(days=30)
-
-          def get_severity(date_added_str):
-              try:
-                  d = datetime.strptime(date_added_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-              except (ValueError, TypeError):
-                  return 'Medium'
-              if d >= seven_days_ago:
-                  return 'Critical'
-              if d >= thirty_days_ago:
-                  return 'High'
-              return 'Medium'
 
           build_map = {
               'KEV watcher item and manual validation checklist': [
@@ -90,72 +64,88 @@ jobs:
               ],
           }
 
-          def get_build(description):
-              desc_lower = description.lower()
+          def get_build(text):
+              t = text.lower()
               for build, keywords in build_map.items():
-                  if any(kw in desc_lower for kw in keywords):
+                  if any(kw in t for kw in keywords):
                       return build
               return 'Manual review item'
 
-          def get_risk_class(description):
-              d = description.lower()
-              if any(x in d for x in ('remote code', 'rce', 'code execution')):
+          def get_risk_class(text):
+              t = text.lower()
+              if any(x in t for x in ('remote code', 'rce', 'code execution')):
                   return 'Remote code execution'
-              if any(x in d for x in ('authentication bypass', 'auth bypass', 'improper auth')):
+              if any(x in t for x in ('authentication bypass', 'auth bypass', 'improper auth')):
                   return 'Authentication bypass'
-              if any(x in d for x in ('privilege escalation', 'elevation of privilege')):
+              if any(x in t for x in ('privilege escalation', 'elevation of privilege')):
                   return 'Privilege escalation'
-              if 'command injection' in d:
+              if 'command injection' in t:
                   return 'Command injection'
-              if any(x in d for x in ('path traversal', 'directory traversal', 'file inclusion')):
+              if any(x in t for x in ('path traversal', 'directory traversal', 'file inclusion')):
                   return 'Path traversal/file exposure'
-              if 'sql injection' in d:
+              if 'sql injection' in t:
                   return 'SQL injection'
-              if any(x in d for x in ('memory corruption', 'buffer overflow', 'use after free', 'out-of-bounds')):
+              if any(x in t for x in ('memory corruption', 'buffer overflow', 'use after free', 'out-of-bounds')):
                   return 'Memory corruption'
-              return 'Known exploited vulnerability'
+              return 'Security advisory'
 
           severity_badge = {
-              'Critical': '![Critical](https://img.shields.io/badge/Critical-red?style=flat-square)',
-              'High': '![High](https://img.shields.io/badge/High-orange?style=flat-square)',
-              'Medium': '![Medium](https://img.shields.io/badge/Medium-yellow?style=flat-square)',
+              'critical': '![Critical](https://img.shields.io/badge/Critical-red?style=flat-square)',
+              'high':     '![High](https://img.shields.io/badge/High-orange?style=flat-square)',
+              'medium':   '![Medium](https://img.shields.io/badge/Medium-yellow?style=flat-square)',
+              'low':      '![Low](https://img.shields.io/badge/Low-blue?style=flat-square)',
           }
 
           lines = [
-              '| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |',
+              '| Severity | Advisory | Product | Risk class | Published | CVSS | Zeid Data defensive build | Rationale |',
               '|---|---|---|---|---:|---:|---|---|',
           ]
 
-          for v in top10:
-              cve = v.get('cveID', 'Unknown')
-              vendor = (v.get('vendorProject') or '').strip()
-              product = (v.get('product') or '').strip()
-              description = v.get('shortDescription', '')
-              date_added = v.get('dateAdded', '')
-              due_date = v.get('dueDate', '')
+          for adv in advisories[:10]:
+              severity = (adv.get('severity') or 'medium').lower()
+              badge = severity_badge.get(severity, severity_badge['medium'])
 
-              severity = get_severity(date_added)
-              build = get_build(description)
-              risk_class = get_risk_class(description)
-              product_full = f'{vendor} {product}'.strip() or 'Unknown'
+              ghsa_id = adv.get('ghsa_id', '')
+              cve_id = adv.get('cve_id') or ''
+              advisory_id = cve_id if cve_id else ghsa_id
+              advisory_url = adv.get('html_url', '')
+              advisory_cell = f'[`{advisory_id}`]({advisory_url})' if advisory_url else f'`{advisory_id}`'
 
-              if severity == 'Critical':
-                  rationale = 'Ransomware-linked, RCE/auth bypass, or immediate exploit priority'
+              summary = adv.get('summary', '')
+              vulns = adv.get('vulnerabilities', [])
+              if vulns and isinstance(vulns, list) and vulns[0].get('package', {}).get('name'):
+                  product = vulns[0]['package']['name']
+                  ecosystem = vulns[0]['package'].get('ecosystem', '')
+                  product_cell = f'{product} ({ecosystem})' if ecosystem else product
               else:
-                  rationale = description[:80] + ('...' if len(description) > 80 else '')
+                  product_cell = summary[:40].split('.')[0] if summary else 'Unknown'
+
+              published = (adv.get('published_at') or '')[:10]
+
+              cvss_data = adv.get('cvss', {}) or {}
+              cvss_score = cvss_data.get('score')
+              cvss_cell = f'`{cvss_score}`' if cvss_score else 'N/A'
+
+              risk_class = get_risk_class(summary)
+              build = get_build(summary)
+
+              if severity == 'critical':
+                  rationale = 'RCE/auth bypass or critical severity advisory'
+              else:
+                  rationale = summary[:80] + ('...' if len(summary) > 80 else '')
 
               lines.append(
-                  f'| {severity_badge[severity]} | `{cve}` | {product_full} | {risk_class} '
-                  f'| `{date_added}` | `{due_date}` | {build} | {rationale} |'
+                  f'| {badge} | {advisory_cell} | {product_cell} | {risk_class} '
+                  f'| `{published}` | {cvss_cell} | {build} | {rationale} |'
               )
 
-          with open('/tmp/kev_table.md', 'w') as f:
+          with open('/tmp/advisory_table.md', 'w') as f:
               f.write('\n'.join(lines) + '\n')
 
-          print(f"[PASS] KEV table written with {len(top10)} entries")
+          print(f"[PASS] advisory table written with {min(len(advisories), 10)} entries")
           PYEOF
 
-      - name: Inject KEV table and timestamp into README
+      - name: Inject table and timestamp into README
         run: |
           python3 - <<'PYEOF'
           import re
@@ -172,23 +162,20 @@ jobs:
               sys.exit(1)
 
           try:
-              with open('/tmp/kev_table.md', 'r') as f:
-                  kev_table = f.read().strip()
+              with open('/tmp/advisory_table.md', 'r') as f:
+                  table = f.read().strip()
           except IOError as e:
-              print(f"ERROR: Cannot read KEV table: {e}", file=sys.stderr)
+              print(f"ERROR: Cannot read advisory table: {e}", file=sys.stderr)
               sys.exit(1)
 
-          # Replace from the anchor through any existing table, stopping before the next subheading.
-          # Works on first run (bare placeholder) and on re-runs (placeholder + stale table).
           pattern = r'<!-- CISA_KEV_TABLE -->.*?(?=\n### What we)'
-          replacement = '<!-- CISA_KEV_TABLE -->\n\n' + kev_table + '\n'
+          replacement = '<!-- CISA_KEV_TABLE -->\n\n' + table + '\n'
           new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
 
           if new_content == content:
               print("ERROR: <!-- CISA_KEV_TABLE --> anchor not found in README", file=sys.stderr)
               sys.exit(1)
 
-          # Replace the generated timestamp regardless of current value (handles both placeholder and prior timestamp).
           timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
           new_content = re.sub(r'Last generated: .*', f'Last generated: {timestamp}', new_content)
 
