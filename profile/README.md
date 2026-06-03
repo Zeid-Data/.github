@@ -1,4 +1,4 @@
-<p align="center"><a href="https://github.com/zeiddata-dev"><img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" alt="Zeid Data Research" width="100%"></a></p>
+<p align="center"><a href="https://github.com/Zeid-Data"><img src="https://raw.githubusercontent.com/zeiddata-dev/Research/main/assets/banners/readme/root.png" alt="Zeid Data Research" width="100%"></a></p>
 
 # Zeid Data
 
@@ -20,30 +20,27 @@ Defensive security engineering, detection content, and operational data systems.
 
 | Track | Status | Focus | Next |
 | --- | --- | --- | --- |
-| Lithium | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Evidence-linked analytics dashboard with normalized records and search-first review. | Validate evidence drilldowns, viewer gates, and source-linked summaries. |
-| Speculum | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Authorized public-surface audit utilities and security review workflows. | Expand tests, reporting, and input validation. |
-| Detection Engineering | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Sigma, KQL, SPL, and Elastic detections backed by structured indicators. | Convert repeatable incident patterns into tested detection rules. |
-| Infrastructure Hardening | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Inventory, config review, service exposure checks, and rollback-safe automation. | Keep scripts small, auditable, and evidence-producing. |
+| Lithium | ![Status: Running private build](https://img.shields.io/badge/Status-Running%20private%20build-0f766e) | Auth-gated React/Vite dashboard. SQLite-backed normalized evidence records. Privacy-aware evidence drilldowns. Search-first review. | Matrix/Synapse migration. Rebranded iOS client (Lithium Chat) in parallel build. |
+| EQ Framework | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Standalone behavioral analysis and signal processing framework. Hosted on dedicated AWS Lightsail instance (eq-dev-01). Not Lithium-specific. | Expand normalized event schema. Harden API surface. Document independently. |
+| Speculum | ![Status: Active build](https://img.shields.io/badge/Status-Active%20build-0f766e) | Authorized public-surface review utilities and security audit workflows. | Expand tests, reporting, documentation, and safe input validation. |
+| Detection Pipeline | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Structured detection content and pipeline infrastructure. Sigma, KQL, SPL, Elastic. Structured indicators. Defensive validation scripts. | Convert repeatable incident patterns into tested detection content. |
+| Sigma Rule Engine | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Authoring, testing, and validating Sigma rules for cross-SIEM deployment. KQL, SPL, and Elastic translation targets. | Build validation harness. Add test coverage for new rule submissions. |
+| ZD Infra Layer | ![Status: Ongoing](https://img.shields.io/badge/Status-Ongoing-0f766e) | Inventory, configuration review, service exposure checks, rollback-safe automation. AWS Lightsail. Ubuntu 24.04 LTS. DNS, VPN, hardening, segmentation. | Keep scripts small, auditable, reversible, and evidence-producing. |
+
+## Lithium
+
+| | Lithium |
+|---|---|
+| Status | ![Running private build](https://img.shields.io/badge/Lithium-Running%20private%20build-7c3aed) |
+| Public boundary | Auth-gated. Unauthenticated dashboard and API requests return 401. |
 
 ## Threat Intel Radar
-
-<!-- ZD_THREAT_RADAR_START -->
-_Auto-updated: `2026-06-03 11:36 UTC`_
 
 ### Current exploited vulnerability radar
 
 Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Data operational severity, not a CVSS score.
 
-| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |
-|---|---|---|---|---:|---:|---|---|
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2025-34291` | Langflow Langflow | Known exploited vulnerability | `2026-05-21` | `2026-06-04` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-34926` | Trend Micro Apex One | Path traversal/file exposure | `2026-05-21` | `2026-06-04` | Route/file exposure audit, web evidence capture, remediation report | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2008-4250` | Microsoft Windows | Memory corruption | `2026-05-20` | `2026-06-03` | Patch-priority radar and host-update validation | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2009-1537` | Microsoft DirectX | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2009-3459` | Adobe Acrobat and Reader | Memory corruption | `2026-05-20` | `2026-06-03` | Patch-priority radar and host-update validation | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2010-0249` | Microsoft Internet Explorer | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2010-0806` | Microsoft Internet Explorer | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
-| <img alt="Critical" src="https://img.shields.io/badge/Critical-red?style=flat-square"> | `CVE-2026-41091` | Microsoft Defender | Known exploited vulnerability | `2026-05-20` | `2026-06-03` | KEV watcher item and manual validation checklist | Ransomware-linked, RCE/auth bypass, or immediate exploit priority |
+<!-- CISA_KEV_TABLE -->
 
 ### What we're building to reduce the pattern
 
@@ -55,8 +52,26 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Detection gaps | Missing SIEM rules, weak telemetry, untested assumptions | Sigma, KQL, SPL, and Elastic detections |
 | Weak evidence chain | Findings without logs, source refs, or reproducible tests | Normalized evidence records, source refs, reports, dashboards |
 
+### Lithium build tracker
+
+| Signal | Value |
+|---|---|
+| Repository | `Zeid-Data/lithium` |
+| Visibility | `private` |
+| Language | `mixed` |
+| Default branch | `main` |
+| Last push | `2026-05-21T02:52:54Z` |
+| Latest commit | `935a5c2` Add Lithium README |
+| Latest workflow | No workflow run visible |
+
+### Public build tracker
+
+| Repo | Language | Updated | Description |
+|---|---:|---:|---|
+| [Zeid-Data/.github](https://github.com/Zeid-Data/.github) | Python | `2026-06-01` | Zeid Data organization profile and dynamic threat intel radar |
+| [Zeid-Data/dominos_source](https://github.com/Zeid-Data/dominos_source) | Python | `2026-05-17` | Python bindings for the Domino APIs |
+
 > Threat intel is only useful when it becomes a control, a detection, a test, or a fix.
-<!-- ZD_THREAT_RADAR_END -->
 
 ## Defensive Build Map
 
@@ -72,6 +87,7 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Repository | Description | Language | Stars | Updated |
 | --- | --- | --- | --- | --- |
 | [.github](https://github.com/Zeid-Data/.github) | Zeid Data organization profile and dynamic threat intel radar | Python | 0 | 2026-06-01 |
+| [dominos_source](https://github.com/Zeid-Data/dominos_source) | Python bindings for the Domino APIs | Python | 0 | 2026-05-17 |
 
 ## Operating Principles
 
@@ -85,6 +101,6 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 
 ---
 
-Last generated: `2026-06-03`
+Last generated: <!-- LAST_GENERATED -->
 
 <!-- ZEID-DATA:README:END -->

@@ -1,0 +1,215 @@
+name: Update threat intel radar
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-threat-intel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Fetch CISA KEV catalog
+        run: |
+          if ! curl --fail --silent --show-error \
+            -o /tmp/kev.json \
+            https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json; then
+            echo "ERROR: Failed to fetch CISA KEV catalog" >&2
+            exit 1
+          fi
+          echo "[PASS] KEV catalog downloaded"
+
+      - name: Parse KEV and build table
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          import sys
+          from datetime import datetime, timezone, timedelta
+
+          try:
+              with open('/tmp/kev.json', 'r') as f:
+                  data = json.load(f)
+          except (json.JSONDecodeError, IOError, ValueError) as e:
+              print(f"ERROR: Failed to parse KEV JSON: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          vulnerabilities = data.get('vulnerabilities', [])
+          if not vulnerabilities:
+              print("ERROR: No vulnerabilities found in KEV data", file=sys.stderr)
+              sys.exit(1)
+
+          try:
+              sorted_vulns = sorted(
+                  vulnerabilities,
+                  key=lambda x: x.get('dateAdded', '1970-01-01'),
+                  reverse=True
+              )
+          except Exception as e:
+              print(f"ERROR: Failed to sort vulnerabilities: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          top10 = sorted_vulns[:10]
+          now = datetime.now(timezone.utc)
+          seven_days_ago = now - timedelta(days=7)
+          thirty_days_ago = now - timedelta(days=30)
+
+          def get_severity(date_added_str):
+              try:
+                  d = datetime.strptime(date_added_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+              except (ValueError, TypeError):
+                  return 'Medium'
+              if d >= seven_days_ago:
+                  return 'Critical'
+              if d >= thirty_days_ago:
+                  return 'High'
+              return 'Medium'
+
+          build_map = {
+              'KEV watcher item and manual validation checklist': [
+                  'remote code', 'code execution', 'rce', 'authentication bypass',
+                  'auth bypass', 'improper auth', 'ransomware', 'backdoor',
+                  'privilege escalation', 'elevation of privilege',
+              ],
+              'Route/file exposure audit, web evidence capture, remediation report': [
+                  'path traversal', 'directory traversal', 'file inclusion',
+                  'file exposure', 'local file', 'lfi', 'rfi',
+              ],
+              'Patch-priority radar and host-update validation': [
+                  'memory corruption', 'buffer overflow', 'use after free',
+                  'out-of-bounds', 'integer overflow',
+              ],
+          }
+
+          def get_build(description):
+              desc_lower = description.lower()
+              for build, keywords in build_map.items():
+                  if any(kw in desc_lower for kw in keywords):
+                      return build
+              return 'Manual review item'
+
+          def get_risk_class(description):
+              d = description.lower()
+              if any(x in d for x in ('remote code', 'rce', 'code execution')):
+                  return 'Remote code execution'
+              if any(x in d for x in ('authentication bypass', 'auth bypass', 'improper auth')):
+                  return 'Authentication bypass'
+              if any(x in d for x in ('privilege escalation', 'elevation of privilege')):
+                  return 'Privilege escalation'
+              if 'command injection' in d:
+                  return 'Command injection'
+              if any(x in d for x in ('path traversal', 'directory traversal', 'file inclusion')):
+                  return 'Path traversal/file exposure'
+              if 'sql injection' in d:
+                  return 'SQL injection'
+              if any(x in d for x in ('memory corruption', 'buffer overflow', 'use after free', 'out-of-bounds')):
+                  return 'Memory corruption'
+              return 'Known exploited vulnerability'
+
+          severity_badge = {
+              'Critical': '![Critical](https://img.shields.io/badge/Critical-red?style=flat-square)',
+              'High': '![High](https://img.shields.io/badge/High-orange?style=flat-square)',
+              'Medium': '![Medium](https://img.shields.io/badge/Medium-yellow?style=flat-square)',
+          }
+
+          lines = [
+              '| Severity | CVE | Product | Risk class | Added | Due | Zeid Data defensive build | Rationale |',
+              '|---|---|---|---|---:|---:|---|---|',
+          ]
+
+          for v in top10:
+              cve = v.get('cveID', 'Unknown')
+              vendor = (v.get('vendorProject') or '').strip()
+              product = (v.get('product') or '').strip()
+              description = v.get('shortDescription', '')
+              date_added = v.get('dateAdded', '')
+              due_date = v.get('dueDate', '')
+
+              severity = get_severity(date_added)
+              build = get_build(description)
+              risk_class = get_risk_class(description)
+              product_full = f'{vendor} {product}'.strip() or 'Unknown'
+
+              if severity == 'Critical':
+                  rationale = 'Ransomware-linked, RCE/auth bypass, or immediate exploit priority'
+              else:
+                  rationale = description[:80] + ('...' if len(description) > 80 else '')
+
+              lines.append(
+                  f'| {severity_badge[severity]} | `{cve}` | {product_full} | {risk_class} '
+                  f'| `{date_added}` | `{due_date}` | {build} | {rationale} |'
+              )
+
+          with open('/tmp/kev_table.md', 'w') as f:
+              f.write('\n'.join(lines) + '\n')
+
+          print(f"[PASS] KEV table written with {len(top10)} entries")
+          PYEOF
+
+      - name: Inject KEV table and timestamp into README
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          import sys
+          from datetime import datetime, timezone
+
+          readme_path = 'profile/README.md'
+
+          try:
+              with open(readme_path, 'r') as f:
+                  content = f.read()
+          except IOError as e:
+              print(f"ERROR: Cannot read README: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          try:
+              with open('/tmp/kev_table.md', 'r') as f:
+                  kev_table = f.read().strip()
+          except IOError as e:
+              print(f"ERROR: Cannot read KEV table: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          # Replace from the anchor through any existing table, stopping before the next subheading.
+          # Works on first run (bare placeholder) and on re-runs (placeholder + stale table).
+          pattern = r'<!-- CISA_KEV_TABLE -->.*?(?=\n### What we)'
+          replacement = '<!-- CISA_KEV_TABLE -->\n\n' + kev_table + '\n'
+          new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+
+          if new_content == content:
+              print("ERROR: <!-- CISA_KEV_TABLE --> anchor not found in README", file=sys.stderr)
+              sys.exit(1)
+
+          # Replace the generated timestamp regardless of current value (handles both placeholder and prior timestamp).
+          timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+          new_content = re.sub(r'Last generated: .*', f'Last generated: {timestamp}', new_content)
+
+          try:
+              with open(readme_path, 'w') as f:
+                  f.write(new_content)
+          except IOError as e:
+              print(f"ERROR: Cannot write README: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"[PASS] README updated, timestamp: {timestamp}")
+          PYEOF
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet profile/README.md; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add profile/README.md
+          git commit -m "chore: update threat intel radar [skip ci]"
+          git push
