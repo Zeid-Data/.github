@@ -1,6 +1,11 @@
 ﻿name: Update threat radar
 
 on:
+  push:
+    paths:
+      - ".github/scripts/update_threat_radar.py"
+      - ".github/workflows/update-threat-radar.yml"
+      
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
@@ -14,15 +19,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Update profile README
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ZD_GH_READ_TOKEN: ${{ secrets.ZD_GH_READ_TOKEN }}
+          ZD_GH_READ_TOKEN: 
           ZD_OWNER: Zeid-Data
           ZD_README_PATH: profile/README.md
-          ZD_LITHIUM_REPO: Zeid-Data/lithium
+          ZD_LITHIUM_REPO:
           ZD_KEV_LIMIT: "8"
           ZD_REPO_LIMIT: "6"
         run: |
