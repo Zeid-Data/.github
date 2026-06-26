@@ -60,7 +60,7 @@ Source: CISA Known Exploited Vulnerabilities catalog. Severity below is Zeid Dat
 | Visibility | `private` |
 | Language | `mixed` |
 | Default branch | `main` |
-| Last push | `2026-05-21T02:52:54Z` |
+| Last push | `2026-06-21T05:32:54Z` |
 | Latest commit | `935a5c2` Add Lithium README |
 | Latest workflow | No workflow run visible |
 
