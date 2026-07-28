@@ -6,6 +6,8 @@
 
 Defensive security engineering, detection content, and operational data systems.
 
+Maintained by **[zeiddata-dev](https://github.com/zeiddata-dev)**. Original tooling, detections, and research live there.
+
 <!-- ZEID-DATA:README:BEGIN -->
 
 ## Mission
